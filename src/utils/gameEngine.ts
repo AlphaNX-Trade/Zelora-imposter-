@@ -17,6 +17,17 @@ export function formatPlayerNumber(playerNumber: number): string {
   return `PLAYER ${String(playerNumber).padStart(2, '0')}`;
 }
 
+export function getPlayerDisplayName(
+  playerNumber: number,
+  playerNames?: Record<number, string>,
+): string {
+  const custom = playerNames?.[playerNumber]?.trim();
+  if (custom && custom.length > 0) {
+    return custom.slice(0, 18);
+  }
+  return formatPlayerNumber(playerNumber);
+}
+
 export function clampPlayerCount(count: number): number {
   if (!Number.isFinite(count)) return DEFAULT_PLAYERS;
   return Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Math.round(count)));
@@ -91,9 +102,17 @@ export function selectSecretWord(
 
 export function getHintForDifficulty(
   wordEntry: WordEntry,
-  _difficulty: HintDifficulty,
+  difficulty: HintDifficulty,
 ): string {
-  return wordEntry.hint;
+  switch (difficulty) {
+    case 'hard':
+      return wordEntry.hardHint;
+    case 'medium':
+      return wordEntry.mediumHint;
+    case 'easy':
+    default:
+      return wordEntry.hint;
+  }
 }
 
 export function createInitialScores(playerCount: number): Record<number, number> {
@@ -102,6 +121,24 @@ export function createInitialScores(playerCount: number): Record<number, number>
     scores[i] = 0;
   }
   return scores;
+}
+
+export function normalizePlayerNames(
+  names: Record<number, string> | undefined,
+  playerCount: number,
+): Record<number, string> {
+  const cleaned: Record<number, string> = {};
+  if (!names) return cleaned;
+  for (let i = 1; i <= playerCount; i++) {
+    const val = names[i];
+    if (typeof val === 'string') {
+      const trimmed = val.trim().slice(0, 18);
+      if (trimmed.length > 0) {
+        cleaned[i] = trimmed;
+      }
+    }
+  }
+  return cleaned;
 }
 
 export function createNewSession(
@@ -128,6 +165,7 @@ export function createNewSession(
     session: {
       roundNumber,
       playerCount,
+      playerNames: normalizePlayerNames(settings.playerNames, playerCount),
       imposterPlayer,
       wordEntry,
       revealIndex: 0,
@@ -176,6 +214,7 @@ export function evaluateCollectiveVote(
     votedOutPlayer,
     secretWord: session.wordEntry.word,
     category: session.wordEntry.category,
+    hintDifficulty,
     hintShown: getHintForDifficulty(session.wordEntry, hintDifficulty),
   };
 
@@ -188,11 +227,13 @@ export function evaluateCollectiveVote(
 export function getSortedLeaderboard(
   scores: Record<number, number>,
   playerCount: number,
+  playerNames?: Record<number, string>,
 ): LeaderboardEntry[] {
   const entries = Array.from({ length: playerCount }, (_, idx) => {
     const playerNumber = idx + 1;
     return {
       playerNumber,
+      playerName: getPlayerDisplayName(playerNumber, playerNames),
       score: scores[playerNumber] ?? 0,
     };
   });

@@ -58,10 +58,10 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
     <div className="safe-screen flex flex-col justify-between max-w-xl mx-auto w-full">
       <header className="flex items-center justify-between gap-3 text-xs text-zinc-400">
         <div className="flex items-center gap-3">
-          <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
+          <span className="font-semibold uppercase tracking-[0.18em] text-sky-400">
             Round {String(roundNumber).padStart(2, '0')}
           </span>
-          <span className="font-mono tabular-nums text-zinc-500">
+          <span className="font-mono tabular-nums text-zinc-400">
             {playerCount} Players
           </span>
         </div>
@@ -69,18 +69,18 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
       </header>
 
       <main className="my-auto py-6 text-center space-y-6">
-        <div className="animate-reveal-pop rounded-2xl border border-white/12 bg-[#12121A] p-7 sm:p-9 shadow-2xl">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-400">
+        <div className="animate-reveal-pop gaming-card-neon rounded-2xl p-7 sm:p-9">
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-400">
             DISCUSSION TIME
           </div>
           <h2 className="mt-3 font-display text-2xl sm:text-3xl font-extrabold tracking-wide text-white text-balance">
             EVERYONE HAS RECEIVED THEIR WORD!
           </h2>
-          <p className="mt-3 text-base text-zinc-300 font-medium">
+          <p className="mt-3 text-base text-zinc-200 font-medium">
             Discuss carefully. Find the imposter!
           </p>
           <p className="mt-1.5 text-sm text-zinc-400">
-            Talk with everyone and identify suspicious players.
+            Share one clue each, watch reactions — one collective group vote follows.
           </p>
 
           {timerDurationSeconds > 0 ? (
@@ -91,7 +91,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                     ? 'text-amber-400'
                     : isLow
                       ? 'text-red-400'
-                      : 'text-white'
+                      : 'text-sky-100'
                 }`}
               >
                 {formattedTime}
@@ -109,16 +109,16 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                   type="button"
                   onClick={() => setIsRunning((r) => !r)}
                   disabled={secondsLeft === 0}
-                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#191924] hover:bg-[#222230] disabled:opacity-40 text-sm font-semibold text-zinc-100 inline-flex items-center gap-2 cursor-pointer"
+                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#171926] hover:bg-[#1F2235] disabled:opacity-40 text-sm font-semibold text-zinc-100 inline-flex items-center gap-2 cursor-pointer"
                 >
                   {isRunning ? (
                     <>
-                      <Pause className="w-4 h-4 text-violet-400" />
+                      <Pause className="w-4 h-4 text-sky-400" />
                       <span>Pause</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 text-violet-400" />
+                      <Play className="w-4 h-4 text-sky-400" />
                       <span>Resume</span>
                     </>
                   )}
@@ -127,7 +127,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setSecondsLeft((s) => Math.min(300, s + 15))}
-                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#191924] hover:bg-[#222230] text-sm font-semibold text-zinc-100 font-mono tabular-nums cursor-pointer"
+                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#171926] hover:bg-[#1F2235] text-sm font-semibold text-zinc-100 font-mono tabular-nums cursor-pointer"
                 >
                   +15s
                 </button>
@@ -138,9 +138,9 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                     setSecondsLeft(timerDurationSeconds);
                     setIsRunning(true);
                   }}
-                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#191924] hover:bg-[#222230] text-sm font-semibold text-zinc-100 inline-flex items-center gap-2 cursor-pointer"
+                  className="min-h-[44px] px-4 rounded-xl border border-white/10 bg-[#171926] hover:bg-[#1F2235] text-sm font-semibold text-zinc-100 inline-flex items-center gap-2 cursor-pointer"
                 >
-                  <RotateCcw className="w-4 h-4 text-zinc-400" />
+                  <RotateCcw className="w-4 h-4 text-violet-400" />
                   <span>Reset</span>
                 </button>
               </div>
@@ -157,7 +157,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
         <button
           type="button"
           onClick={onStartVoting}
-          className="w-full min-h-[58px] rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
+          className="w-full min-h-[58px] rounded-xl gaming-btn-primary active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
         >
           <Vote className="w-5 h-5" />
           <span>START VOTING</span>

@@ -32,7 +32,9 @@ export interface WordEntry {
   id: string;
   word: string;
   category: WordCategory;
-  hint: string;
+  hint: string; // Easy: broad category / general clue
+  mediumHint: string; // Medium: indirect contextual clue
+  hardHint: string; // Hard: clever abstract clue
   difficulty: HintDifficulty;
 }
 
@@ -44,6 +46,7 @@ export type GameScreen =
   | 'VOTING'
   | 'PRE_REVEAL'
   | 'RESULT'
+  | 'HISTORY'
   | 'HOW_TO_PLAY'
   | 'SETTINGS'
   | 'ABOUT';
@@ -55,6 +58,7 @@ export interface GameSettings {
   playerCount: number; // 3..20, default 5
   hintDifficulty: HintDifficulty; // default 'easy'
   selectedCategories: WordCategory[]; // empty = all categories
+  playerNames: Record<number, string>; // optional custom seat names stored locally
 }
 
 export interface RoundOutcome {
@@ -64,12 +68,22 @@ export interface RoundOutcome {
   votedOutPlayer: number;
   secretWord: string;
   category: WordCategory;
+  hintDifficulty: HintDifficulty;
   hintShown: string;
+}
+
+export interface GameHistoryRecord extends RoundOutcome {
+  id: string;
+  playerCount: number;
+  imposterLabel: string;
+  votedOutLabel: string;
+  playedAt: number;
 }
 
 export interface GameSession {
   roundNumber: number;
   playerCount: number;
+  playerNames: Record<number, string>;
   imposterPlayer: number; // 1-based player number
   wordEntry: WordEntry;
   revealIndex: number; // 0-based index into players (0 .. playerCount - 1)
@@ -85,6 +99,7 @@ export interface GameSession {
 
 export interface LeaderboardEntry {
   playerNumber: number;
+  playerName: string;
   score: number;
   rank: number;
 }

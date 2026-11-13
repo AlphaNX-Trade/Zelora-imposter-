@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { WifiOff } from 'lucide-react';
 import { AboutScreen } from './components/AboutScreen';
 import { DiscussionScreen } from './components/DiscussionScreen';
@@ -7,6 +9,7 @@ import {
   GameLoadingScreen,
   type LoadingTransitionState,
 } from './components/GameLoadingScreen';
+import { HistoryScreen } from './components/HistoryScreen';
 import { HomeScreen } from './components/HomeScreen';
 import { HowToPlayScreen } from './components/HowToPlayScreen';
 import { PreRevealScreen } from './components/PreRevealScreen';
@@ -15,18 +18,26 @@ import { RevealScreen } from './components/RevealScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { SetupScreen } from './components/SetupScreen';
 import { VotingScreen } from './components/VotingScreen';
-import type { GameScreen, GameSession, GameSettings } from './types/game';
+import type {
+  GameHistoryRecord,
+  GameScreen,
+  GameSession,
+  GameSettings,
+} from './types/game';
 import { audioEngine } from './utils/audio';
 import {
   clampPlayerCount,
   createNewSession,
   evaluateCollectiveVote,
+  getPlayerDisplayName,
   getSortedLeaderboard,
 } from './utils/gameEngine';
 import {
+  appendGameHistory,
   clearAllLocalHistory,
   clearSessionStorage,
   loadActiveGameState,
+  loadGameHistory,
   loadSettings,
   loadUsedWordIds,
   saveActiveGameState,
@@ -41,6 +52,9 @@ export default function App() {
   const [settings, setSettings] = useState<GameSettings>(() => loadSettings());
   const [usedWordIds, setUsedWordIds] = useState<string[]>(() =>
     loadUsedWordIds(),
+  );
+  const [gameHistory, setGameHistory] = useState<GameHistoryRecord[]>(() =>
+    loadGameHistory(),
   );
   const [savedState] = useState(() => loadActiveGameState());
   const [session, setSession] = useState<GameSession | null>(
@@ -186,6 +200,7 @@ export default function App() {
   useEffect(() => {
     const escapableScreens: GameScreen[] = [
       'SETUP',
+      'HISTORY',
       'HOW_TO_PLAY',
       'SETTINGS',
       'ABOUT',
@@ -202,9 +217,64 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [screen, loadingTransition]);
 
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listenerPromise = CapacitorApp.addListener('backButton', () => {
+      if (loadingTransition) return;
+
+      if (exitModalOpen) {
+        setExitModalOpen(false);
+        return;
+      }
+
+      if (
+        screen === 'SETUP' ||
+        screen === 'HISTORY' ||
+        screen === 'HOW_TO_PLAY' ||
+        screen === 'SETTINGS' ||
+        screen === 'ABOUT' ||
+        screen === 'RESULT'
+      ) {
+        audioEngine.playTap();
+        setScreen('HOME');
+        return;
+      }
+
+      if (screen === 'VOTING' && session && !session.voteLocked) {
+        audioEngine.playTap();
+        setScreen('DISCUSSION');
+        return;
+      }
+
+      if (
+        screen === 'REVEAL' ||
+        screen === 'DISCUSSION' ||
+        screen === 'VOTING' ||
+        screen === 'PRE_REVEAL'
+      ) {
+        audioEngine.playTap();
+        setExitModalOpen(true);
+        return;
+      }
+
+      if (screen === 'HOME') {
+        void CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      void listenerPromise.then((handle) => handle.remove());
+    };
+  }, [screen, exitModalOpen, session, loadingTransition]);
+
   const handleUpdateSettings = useCallback((next: GameSettings) => {
-    setSettings(next);
-    setSetupPlayerCount(clampPlayerCount(next.playerCount));
+    setSettings((prev) => {
+      if (next.playerCount !== prev.playerCount) {
+        setSetupPlayerCount(clampPlayerCount(next.playerCount));
+      }
+      return next;
+    });
     saveSettings(next);
   }, []);
 
@@ -385,6 +455,29 @@ export default function App() {
           audioEngine.playDefeat();
         }
 
+        const record: GameHistoryRecord = {
+          id: `${Date.now()}-${session.roundNumber}-${Math.random().toString(36).slice(2, 7)}`,
+          playedAt: Date.now(),
+          roundNumber: evaluation.outcome.roundNumber,
+          playerCount: session.playerCount,
+          winningSide: evaluation.outcome.winningSide,
+          imposterPlayer: evaluation.outcome.imposterPlayer,
+          votedOutPlayer: evaluation.outcome.votedOutPlayer,
+          imposterLabel: getPlayerDisplayName(
+            evaluation.outcome.imposterPlayer,
+            session.playerNames,
+          ),
+          votedOutLabel: getPlayerDisplayName(
+            evaluation.outcome.votedOutPlayer,
+            session.playerNames,
+          ),
+          secretWord: evaluation.outcome.secretWord,
+          category: evaluation.outcome.category,
+          hintDifficulty: evaluation.outcome.hintDifficulty,
+          hintShown: evaluation.outcome.hintShown,
+        };
+        setGameHistory(appendGameHistory(record));
+
         setSession({
           ...session,
           scores: evaluation.updatedScores,
@@ -452,21 +545,22 @@ export default function App() {
     clearAllLocalHistory();
     setSession(null);
     setUsedWordIds([]);
+    setGameHistory([]);
   }, []);
 
   return (
-    <div className="min-h-[100dvh] bg-[#09090D] text-[#F8FAFC] relative overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#07070B] text-[#F8FAFC] relative overflow-x-hidden">
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(124,58,237,0.12),transparent_55%)]"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(124,58,237,0.14),transparent_48%),radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.1),transparent_45%)]"
       />
 
       {!isOnline && (
         <div
           role="status"
-          className="relative z-40 bg-violet-950/80 border-b border-violet-500/25 px-4 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] text-center text-xs text-violet-200 flex items-center justify-center gap-2"
+          className="relative z-40 bg-indigo-950/85 border-b border-sky-400/25 px-4 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] text-center text-xs text-sky-100 flex items-center justify-center gap-2"
         >
-          <WifiOff className="w-3.5 h-3.5 shrink-0" />
+          <WifiOff className="w-3.5 h-3.5 shrink-0 text-sky-400" />
           <span>Offline Mode · Game &amp; 572 words available locally</span>
         </div>
       )}
@@ -481,6 +575,7 @@ export default function App() {
                 hasActiveSession={!!session}
                 activeRound={session?.roundNumber ?? 1}
                 activePlayerCount={session?.playerCount ?? settings.playerCount}
+                historyCount={gameHistory.length}
                 soundEnabled={settings.soundEnabled}
                 onToggleSound={() =>
                   handleUpdateSettings({
@@ -494,6 +589,10 @@ export default function App() {
                   setScreen('SETUP');
                 }}
                 onResumeGame={handleResumeGame}
+                onHistory={() => {
+                  audioEngine.playTap();
+                  setScreen('HISTORY');
+                }}
                 onHowToPlay={() => {
                   audioEngine.playTap();
                   setScreen('HOW_TO_PLAY');
@@ -517,6 +616,7 @@ export default function App() {
                   audioEngine.playTap();
                   setSetupPlayerCount(clampPlayerCount(count));
                 }}
+                onUpdateSettings={handleUpdateSettings}
                 onStartGame={() => handleStartFreshGame(setupPlayerCount)}
                 onBack={() => {
                   audioEngine.playTap();
@@ -560,6 +660,7 @@ export default function App() {
                 <PreRevealScreen
                   roundNumber={session.roundNumber}
                   selectedSuspect={session.selectedSuspect}
+                  playerNames={session.playerNames}
                   onRevealResult={handleRevealResult}
                   onRequestExit={handleRequestExit}
                 />
@@ -571,9 +672,26 @@ export default function App() {
                 leaderboard={getSortedLeaderboard(
                   session.scores,
                   session.playerCount,
+                  session.playerNames,
                 )}
+                playerNames={session.playerNames}
                 onPlayNextRound={handlePlayNextRound}
                 onReturnHome={handleReturnHome}
+                onViewHistory={() => {
+                  audioEngine.playTap();
+                  setScreen('HISTORY');
+                }}
+              />
+            )}
+
+            {screen === 'HISTORY' && (
+              <HistoryScreen
+                history={gameHistory}
+                onClearHistory={handleClearHistory}
+                onBack={() => {
+                  audioEngine.playTap();
+                  setScreen('HOME');
+                }}
               />
             )}
 
@@ -596,6 +714,7 @@ export default function App() {
                 settings={settings}
                 hasActiveSession={!!session}
                 usedWordCount={usedWordIds.length}
+                historyCount={gameHistory.length}
                 onUpdateSettings={handleUpdateSettings}
                 onResetCurrentGame={handleResetCurrentGame}
                 onClearHistory={handleClearHistory}

@@ -1,11 +1,12 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
-import { formatPlayerNumber } from '../utils/gameEngine';
+import { getPlayerDisplayName } from '../utils/gameEngine';
 import { ExitGameButton } from './ExitGameControl';
 
 interface PreRevealScreenProps {
   roundNumber: number;
   selectedSuspect: number;
+  playerNames?: Record<number, string>;
   onRevealResult: () => void;
   onRequestExit: () => void;
 }
@@ -13,14 +14,17 @@ interface PreRevealScreenProps {
 export const PreRevealScreen: React.FC<PreRevealScreenProps> = ({
   roundNumber,
   selectedSuspect,
+  playerNames,
   onRevealResult,
   onRequestExit,
 }) => {
+  const suspectLabel = getPlayerDisplayName(selectedSuspect, playerNames);
+
   return (
     <div className="safe-screen flex flex-col justify-between max-w-xl mx-auto w-full">
       <header className="flex items-center justify-between gap-3 text-xs text-zinc-400">
         <div className="flex items-center gap-3">
-          <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
+          <span className="font-semibold uppercase tracking-[0.18em] text-sky-400">
             Round {String(roundNumber).padStart(2, '0')}
           </span>
           <span className="font-mono uppercase tracking-wider text-amber-300">
@@ -31,7 +35,7 @@ export const PreRevealScreen: React.FC<PreRevealScreenProps> = ({
       </header>
 
       <main className="my-auto py-8">
-        <div className="animate-reveal-pop rounded-2xl border border-violet-500/35 bg-[#12121B] p-8 sm:p-10 text-center shadow-2xl">
+        <div className="animate-reveal-pop gaming-card-neon rounded-2xl p-8 sm:p-10 text-center">
           <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-amber-300">
             <Lock className="w-3.5 h-3.5" />
             <span>Group Decision Confirmed</span>
@@ -41,8 +45,8 @@ export const PreRevealScreen: React.FC<PreRevealScreenProps> = ({
             GROUP VOTE LOCKED!
           </h2>
 
-          <div className="mt-4 inline-block rounded-xl border border-white/10 bg-black/30 px-4 py-2 font-mono text-sm font-bold tracking-wider text-violet-200 tabular-nums">
-            Suspect: {formatPlayerNumber(selectedSuspect)}
+          <div className="mt-4 inline-block rounded-xl border border-sky-400/25 bg-black/35 px-4 py-2 font-mono text-sm font-bold tracking-wider text-sky-200 tabular-nums">
+            Suspect: {suspectLabel}
           </div>
 
           <p className="mt-4 text-base sm:text-lg text-zinc-300">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Check, RotateCcw, Trash2 } from 'lucide-react';
 import { ALL_CATEGORIES, WORD_LIBRARY } from '../data/words';
-import type { GameSettings, WordCategory } from '../types/game';
+import type { GameSettings, HintDifficulty, WordCategory } from '../types/game';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../utils/gameEngine';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -9,6 +9,7 @@ interface SettingsScreenProps {
   settings: GameSettings;
   hasActiveSession: boolean;
   usedWordCount: number;
+  historyCount: number;
   onUpdateSettings: (next: GameSettings) => void;
   onResetCurrentGame: () => void;
   onClearHistory: () => void;
@@ -24,11 +25,37 @@ const TIMER_OPTIONS = [
   { label: '120s', value: 120 },
 ];
 
+const DIFFICULTY_OPTIONS: Array<{
+  value: HintDifficulty;
+  label: string;
+  example: string;
+  desc: string;
+}> = [
+  {
+    value: 'easy',
+    label: 'Easy',
+    example: 'Hard Disk → Technology',
+    desc: 'Broad category clue',
+  },
+  {
+    value: 'medium',
+    label: 'Medium',
+    example: 'Hard Disk → Digital storage',
+    desc: 'Indirect contextual clue',
+  },
+  {
+    value: 'hard',
+    label: 'Hard',
+    example: 'Hard Disk → Where forgotten memories wait',
+    desc: 'Abstract lateral clue',
+  },
+];
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   settings,
   hasActiveSession,
   usedWordCount,
+  historyCount,
   onUpdateSettings,
   onResetCurrentGame,
   onClearHistory,
@@ -39,9 +66,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const toggleCategory = (cat: WordCategory) => {
     const current = settings.selectedCategories;
-    // Empty array means ALL categories are active
     if (current.length === 0) {
-      // Deselecting one from All -> select all others
       onUpdateSettings({
         ...settings,
         selectedCategories: ALL_CATEGORIES.filter((c) => c !== cat),
@@ -51,7 +76,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
     if (current.includes(cat)) {
       const next = current.filter((c) => c !== cat);
-      // Never leave 0 categories: if user deselects last one, reset to All
       onUpdateSettings({
         ...settings,
         selectedCategories: next,
@@ -71,6 +95,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const allSelected = settings.selectedCategories.length === 0;
+  const activeDiff =
+    DIFFICULTY_OPTIONS.find((d) => d.value === settings.hintDifficulty) ??
+    DIFFICULTY_OPTIONS[0];
 
   return (
     <div className="safe-screen flex flex-col max-w-4xl mx-auto w-full">
@@ -78,12 +105,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="min-h-[44px] px-3 -ml-2 inline-flex items-center gap-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium cursor-pointer"
+          className="min-h-[44px] px-3 -ml-2 inline-flex items-center gap-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back</span>
         </button>
-        <span className="text-xs font-semibold uppercase tracking-widest text-violet-400">
+        <span className="text-xs font-semibold uppercase tracking-widest text-sky-400">
           Settings
         </span>
         <div className="w-16" aria-hidden="true" />
@@ -93,16 +120,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         {feedbackMsg && (
           <div
             role="status"
-            className="rounded-xl border border-violet-500/40 bg-violet-600/15 px-4 py-3 text-sm font-medium text-violet-200 flex items-center gap-2"
+            className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-3 text-sm font-medium text-sky-100 flex items-center gap-2"
           >
-            <Check className="w-4 h-4 text-violet-300 shrink-0" />
+            <Check className="w-4 h-4 text-sky-300 shrink-0" />
             <span>{feedbackMsg}</span>
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Audio & Gameplay */}
-          <section className="rounded-2xl border border-white/10 bg-[#12121A] p-6 space-y-5">
+          <section className="gaming-card rounded-2xl p-6 space-y-5">
             <h2 className="font-display text-lg font-bold text-white">
               Audio &amp; Gameplay
             </h2>
@@ -114,7 +141,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   Sound Effects
                 </div>
                 <div className="text-xs text-zinc-400">
-                  Offline synthesized chimes &amp; feedback
+                  Offline chimes, win fanfare &amp; loss stings
                 </div>
               </div>
               <button
@@ -129,7 +156,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 }
                 className={`min-h-[44px] min-w-[76px] rounded-xl px-3 text-xs font-bold tracking-wider transition-colors cursor-pointer ${
                   settings.soundEnabled
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white'
                     : 'bg-[#1A1A24] text-zinc-400 border border-white/10'
                 }`}
               >
@@ -159,7 +186,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 }
                 className={`min-h-[44px] min-w-[76px] rounded-xl px-3 text-xs font-bold tracking-wider transition-colors cursor-pointer ${
                   settings.musicEnabled
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white'
                     : 'bg-[#1A1A24] text-zinc-400 border border-white/10'
                 }`}
               >
@@ -173,7 +200,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <span className="text-sm font-semibold text-white">
                   Default Player Count
                 </span>
-                <span className="font-mono text-sm font-bold text-violet-300 tabular-nums">
+                <span className="font-mono text-sm font-bold text-sky-300 tabular-nums">
                   {settings.playerCount} Players
                 </span>
               </div>
@@ -212,8 +239,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       }
                       className={`min-h-[44px] rounded-xl text-xs font-mono font-bold tabular-nums transition-all cursor-pointer ${
                         active
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-[#191924] text-zinc-300 border border-white/8 hover:border-violet-500/40'
+                          ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white'
+                          : 'bg-[#171926] text-zinc-300 border border-white/8 hover:border-sky-400/40'
                       }`}
                     >
                       {opt.label}
@@ -223,26 +250,56 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </div>
             </div>
 
-            {/* Imposter Hint System */}
+            {/* Imposter Hint Difficulty */}
             <div className="pt-4 border-t border-white/8">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 mb-2.5">
                 <span className="text-sm font-semibold text-white">
-                  Imposter Hint Mode
+                  Imposter Hint Difficulty
                 </span>
-                <span className="text-xs font-semibold text-violet-300">
-                  Category Hint
+                <span className="text-xs font-semibold text-sky-300 uppercase">
+                  {activeDiff.label}
                 </span>
               </div>
-              <p className="mt-1.5 text-xs text-zinc-400 leading-relaxed">
-                The imposter sees only the word&apos;s general category (e.g.,
-                Hard Disk → Technology, Lion → Animal).
+              <div className="grid grid-cols-3 gap-2">
+                {DIFFICULTY_OPTIONS.map((opt) => {
+                  const active = settings.hintDifficulty === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        onUpdateSettings({
+                          ...settings,
+                          hintDifficulty: opt.value,
+                        })
+                      }
+                      aria-pressed={active}
+                      className={`min-h-[48px] px-2 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        active
+                          ? 'bg-violet-600/30 border border-sky-400/60 text-white'
+                          : 'bg-[#171926] text-zinc-300 border border-white/8 hover:border-white/20'
+                      }`}
+                    >
+                      <div>{opt.label}</div>
+                      <div className="text-[10px] text-zinc-400 font-normal mt-0.5">
+                        {opt.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2.5 text-xs text-zinc-400">
+                Example ({activeDiff.label}):{' '}
+                <span className="text-sky-200 font-medium">
+                  {activeDiff.example}
+                </span>
               </p>
             </div>
           </section>
 
           {/* Word Categories & Storage */}
           <section className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-[#12121A] p-6">
+            <div className="gaming-card rounded-2xl p-6">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <h2 className="font-display text-lg font-bold text-white">
@@ -262,8 +319,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   }
                   className={`min-h-[40px] px-3 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                     allSelected
-                      ? 'bg-violet-600/25 text-violet-300 border border-violet-500/40'
-                      : 'bg-[#191924] text-zinc-300 border border-white/10 hover:border-white/20'
+                      ? 'bg-sky-500/20 text-sky-200 border border-sky-400/45'
+                      : 'bg-[#171926] text-zinc-300 border border-white/10 hover:border-white/20'
                   }`}
                 >
                   Select All
@@ -282,13 +339,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       onClick={() => toggleCategory(category)}
                       className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-medium text-left transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
                         isSelected
-                          ? 'bg-violet-600/18 border border-violet-500/40 text-white'
-                          : 'bg-[#171720] border border-white/6 text-zinc-500 hover:text-zinc-300'
+                          ? 'bg-violet-600/20 border border-sky-400/40 text-white'
+                          : 'bg-[#141622] border border-white/6 text-zinc-500 hover:text-zinc-300'
                       }`}
                     >
                       <span className="truncate">{category}</span>
                       {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                       )}
                     </button>
                   );
@@ -297,7 +354,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </div>
 
             {/* Session & Data Management */}
-            <div className="rounded-2xl border border-white/10 bg-[#12121A] p-6 space-y-3">
+            <div className="gaming-card rounded-2xl p-6 space-y-3">
               <h2 className="font-display text-lg font-bold text-white">
                 Game Data &amp; App
               </h2>
@@ -311,9 +368,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   onResetCurrentGame();
                   showToast('Current game session reset.');
                 }}
-                className="w-full min-h-[48px] px-4 rounded-xl border border-white/10 bg-[#181822] hover:bg-[#20202D] disabled:opacity-40 disabled:pointer-events-none text-sm font-semibold text-zinc-200 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full min-h-[48px] px-4 rounded-xl border border-white/10 bg-[#171926] hover:bg-[#1E2133] disabled:opacity-40 disabled:pointer-events-none text-sm font-semibold text-zinc-200 flex items-center justify-center gap-2 cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 text-violet-400" />
+                <RotateCcw className="w-4 h-4 text-sky-400" />
                 <span>Reset Current Game</span>
               </button>
 
@@ -325,13 +382,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>
-                    Clear Local Game History ({usedWordCount} words played)
+                    Clear Local Game History ({usedWordCount} words · {historyCount} rounds)
                   </span>
                 </button>
               ) : (
                 <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 space-y-2.5">
                   <div className="text-xs text-red-200 text-center">
-                    Clear all played word history and reset any active game?
+                    Clear all played word history, match history, and active game?
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button

@@ -10,7 +10,7 @@
 @layer base {
   html,
   body {
-    background-color: #09090d;
+    background-color: #07070b;
     color: #f8fafc;
     font-family: var(--font-sans);
     overscroll-behavior-y: contain;
@@ -39,7 +39,35 @@
   }
 }
 
-/* Cross-device safe-area padding (iOS notch/Dynamic Island, Android gesture bar, tablet/laptop breathing room) */
+/* Gaming surfaces with deep charcoal base and subtle purple/electric-blue edge polish */
+.gaming-card {
+  background: linear-gradient(165deg, rgba(22, 23, 36, 0.96) 0%, rgba(13, 14, 22, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 20px 50px -20px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.gaming-card-neon {
+  background: linear-gradient(160deg, rgba(25, 22, 46, 0.96) 0%, rgba(12, 13, 22, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.38);
+  box-shadow:
+    0 0 36px -14px rgba(124, 58, 237, 0.45),
+    0 0 28px -16px rgba(56, 189, 248, 0.3),
+    inset 0 1px 0 rgba(167, 139, 250, 0.16);
+}
+
+.gaming-btn-primary {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 55%, #2563eb 100%);
+  border-bottom: 3px solid #3730a3;
+  box-shadow: 0 10px 28px -10px rgba(79, 70, 229, 0.65);
+}
+
+.gaming-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+/* Cross-device safe-area padding (Android status/nav bar, iOS notch/Dynamic Island, tablet/desktop) */
 .safe-screen {
   min-height: 100svh;
   min-height: 100dvh;
@@ -58,13 +86,13 @@
   }
 }
 
-/* Touch-friendly bespoke range slider across iOS, Android, Tablet & Desktop */
+/* Touch-friendly bespoke range slider across Android, iOS, Tablet & Desktop */
 input[type="range"].zelora-range {
   -webkit-appearance: none;
   appearance: none;
   height: 10px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.25), rgba(56, 189, 248, 0.22));
 }
 
 input[type="range"].zelora-range::-webkit-slider-thumb {
@@ -73,15 +101,14 @@ input[type="range"].zelora-range::-webkit-slider-thumb {
   width: 24px;
   height: 24px;
   border-radius: 9999px;
-  background: #8b5cf6;
+  background: linear-gradient(135deg, #a78bfa, #38bdf8);
   border: 2px solid #f8fafc;
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.55);
   cursor: pointer;
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 input[type="range"].zelora-range::-webkit-slider-thumb:hover {
-  background: #a78bfa;
   transform: scale(1.08);
 }
 
@@ -89,13 +116,13 @@ input[type="range"].zelora-range::-moz-range-thumb {
   width: 24px;
   height: 24px;
   border-radius: 9999px;
-  background: #8b5cf6;
+  background: linear-gradient(135deg, #a78bfa, #38bdf8);
   border: 2px solid #f8fafc;
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.55);
   cursor: pointer;
 }
 
-/* Subtle dark scrollbars for tablet/desktop scrollable panels */
+/* Subtle dark scrollbars */
 .zelora-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
@@ -139,7 +166,7 @@ input[type="range"].zelora-range::-moz-range-thumb {
 @keyframes reveal-pop {
   0% {
     opacity: 0;
-    transform: scale(0.94) translateY(8px);
+    transform: scale(0.95) translateY(8px);
   }
   100% {
     opacity: 1;
@@ -218,7 +245,7 @@ input[type="range"].zelora-range::-moz-range-thumb {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(167, 139, 250, 0.09) 50%,
+    rgba(96, 165, 250, 0.11) 50%,
     transparent 100%
   );
   animation: skeleton-shimmer 1.35s ease-in-out infinite;

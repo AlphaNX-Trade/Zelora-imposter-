@@ -20,14 +20,14 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
           <ArrowLeft className="w-5 h-5" />
           <span>Back</span>
         </button>
-        <span className="text-xs font-semibold uppercase tracking-widest text-violet-400">
+        <span className="text-xs font-semibold uppercase tracking-widest text-sky-400">
           About
         </span>
         <div className="w-16" aria-hidden="true" />
       </header>
 
       <main className="my-auto py-6">
-        <div className="rounded-2xl border border-white/10 bg-[#12121A] p-7 sm:p-10 text-center space-y-6">
+        <div className="gaming-card-neon rounded-2xl p-7 sm:p-10 text-center space-y-6">
           <ZeloraLogo size="md" showWordmark />
 
           <p className="text-sm sm:text-base text-zinc-300 max-w-md mx-auto leading-relaxed">
@@ -41,18 +41,18 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
             </div>
             <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/8">
               <dt className="text-zinc-400">Version</dt>
-              <dd className="font-mono font-semibold text-violet-300">1.0.0</dd>
+              <dd className="font-mono font-semibold text-sky-300">1.0.0</dd>
             </div>
             <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/8">
               <dt className="text-zinc-400">Play Mode</dt>
               <dd className="font-semibold text-white">
-                Offline Pass &amp; Play
+                100% Offline Pass &amp; Play
               </dd>
             </div>
             <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/8">
-              <dt className="text-zinc-400">Players</dt>
+              <dt className="text-zinc-400">Players &amp; Clues</dt>
               <dd className="font-mono font-semibold text-white tabular-nums">
-                3 – 20 Players
+                3 – 20 Players · 3 Hint Tiers
               </dd>
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -63,9 +63,9 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
             </div>
           </dl>
 
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            Built to run completely offline on your phone. Scores and settings stay
-            on your device.
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Built with bundled local fonts, offline audio synthesis, custom
+            player names, and local device storage — zero internet required.
           </p>
 
           <div className="pt-2">

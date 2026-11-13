@@ -1,5 +1,6 @@
 import { ALL_CATEGORIES } from '../data/words';
 import type {
+  GameHistoryRecord,
   GameScreen,
   GameSession,
   GameSettings,
@@ -17,7 +18,10 @@ const KEYS = {
   SESSION: 'zelora_imposter_session_v1',
   SCREEN: 'zelora_imposter_screen_v1',
   USED_WORDS: 'zelora_imposter_used_words_v1',
+  HISTORY: 'zelora_imposter_history_v1',
 } as const;
+
+const MAX_HISTORY_ENTRIES = 100;
 
 export const DEFAULT_SETTINGS: GameSettings = {
   soundEnabled: true,
@@ -26,6 +30,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   playerCount: DEFAULT_PLAYERS,
   hintDifficulty: 'easy',
   selectedCategories: [],
+  playerNames: {},
 };
 
 const VALID_CATEGORY_SET = new Set<string>(ALL_CATEGORIES);
@@ -41,14 +46,36 @@ function getStorage(): Storage | null {
   return null;
 }
 
+function sanitizePlayerNames(raw: unknown): Record<number, string> {
+  if (!raw || typeof raw !== 'object') return {};
+  const result: Record<number, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const num = Number(key);
+    if (
+      Number.isInteger(num) &&
+      num >= 1 &&
+      num <= MAX_PLAYERS &&
+      typeof value === 'string'
+    ) {
+      const trimmed = value.trim().slice(0, 18);
+      if (trimmed.length > 0) {
+        result[num] = trimmed;
+      }
+    }
+  }
+  return result;
+}
+
 export function loadSettings(): GameSettings {
   const storage = getStorage();
-  if (!storage) return { ...DEFAULT_SETTINGS };
+  if (!storage) return { ...DEFAULT_SETTINGS, playerNames: {} };
   try {
     const raw = storage.getItem(KEYS.SETTINGS);
-    if (!raw) return { ...DEFAULT_SETTINGS };
+    if (!raw) return { ...DEFAULT_SETTINGS, playerNames: {} };
     const parsed = JSON.parse(raw) as Partial<GameSettings>;
-    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_SETTINGS };
+    if (!parsed || typeof parsed !== 'object') {
+      return { ...DEFAULT_SETTINGS, playerNames: {} };
+    }
 
     const validCategories = Array.isArray(parsed.selectedCategories)
       ? parsed.selectedCategories.filter(
@@ -84,9 +111,10 @@ export function loadSettings(): GameSettings {
           ? parsed.hintDifficulty
           : DEFAULT_SETTINGS.hintDifficulty,
       selectedCategories: validCategories,
+      playerNames: sanitizePlayerNames(parsed.playerNames),
     };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, playerNames: {} };
   }
 }
 
@@ -125,6 +153,49 @@ export function saveUsedWordIds(ids: string[]): void {
   }
 }
 
+export function loadGameHistory(): GameHistoryRecord[] {
+  const storage = getStorage();
+  if (!storage) return [];
+  try {
+    const raw = storage.getItem(KEYS.HISTORY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is GameHistoryRecord =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.secretWord === 'string' &&
+        typeof item.imposterLabel === 'string' &&
+        typeof item.votedOutLabel === 'string' &&
+        (item.winningSide === 'PLAYERS' || item.winningSide === 'IMPOSTER') &&
+        typeof item.playedAt === 'number',
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function appendGameHistory(
+  record: GameHistoryRecord,
+): GameHistoryRecord[] {
+  const current = loadGameHistory();
+  const next = [record, ...current.filter((item) => item.id !== record.id)].slice(
+    0,
+    MAX_HISTORY_ENTRIES,
+  );
+  const storage = getStorage();
+  if (storage) {
+    try {
+      storage.setItem(KEYS.HISTORY, JSON.stringify(next));
+    } catch {
+      // Storage unavailable or full
+    }
+  }
+  return next;
+}
+
 function isValidSession(candidate: unknown): candidate is GameSession {
   if (!candidate || typeof candidate !== 'object') return false;
   const s = candidate as GameSession;
@@ -151,7 +222,9 @@ function isValidSession(candidate: unknown): candidate is GameSession {
     typeof s.wordEntry.id !== 'string' ||
     typeof s.wordEntry.word !== 'string' ||
     typeof s.wordEntry.category !== 'string' ||
-    typeof s.wordEntry.hint !== 'string'
+    typeof s.wordEntry.hint !== 'string' ||
+    typeof s.wordEntry.mediumHint !== 'string' ||
+    typeof s.wordEntry.hardHint !== 'string'
   ) {
     return false;
   }
@@ -220,6 +293,7 @@ export function loadActiveGameState(): {
     }
 
     parsed.revealStep = 'PROMPT';
+    parsed.playerNames = sanitizePlayerNames(parsed.playerNames);
 
     const validScreens: GameScreen[] = [
       'HOME',
@@ -262,6 +336,7 @@ export function clearAllLocalHistory(): void {
     storage.removeItem(KEYS.SESSION);
     storage.removeItem(KEYS.SCREEN);
     storage.removeItem(KEYS.USED_WORDS);
+    storage.removeItem(KEYS.HISTORY);
   } catch {
     // Ignore
   }

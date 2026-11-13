@@ -47,22 +47,22 @@ export const GameLoadingScreen: React.FC<GameLoadingScreenProps> = ({
           <div className="relative w-20 h-20 flex items-center justify-center">
             <div
               aria-hidden="true"
-              className="absolute inset-0 rounded-full bg-violet-600/20 blur-xl"
+              className="absolute inset-0 rounded-full bg-indigo-600/20 blur-xl"
             />
             <div
               aria-hidden="true"
               className={`absolute inset-0 rounded-full border-2 border-white/10 ${
-                isTally ? 'border-t-amber-400' : 'border-t-violet-400'
+                isTally ? 'border-t-amber-400' : 'border-t-sky-400'
               } animate-zelora-orbit`}
             />
             <div
               aria-hidden="true"
-              className="absolute inset-2.5 rounded-full border-2 border-white/5 border-b-violet-500/70 animate-zelora-orbit-reverse"
+              className="absolute inset-2.5 rounded-full border-2 border-white/5 border-b-violet-500/80 animate-zelora-orbit-reverse"
             />
             <div
               aria-hidden="true"
               className={`relative w-4 h-4 rotate-45 rounded-[3px] ${
-                isTally ? 'bg-amber-400' : 'bg-violet-400'
+                isTally ? 'bg-amber-400' : 'bg-sky-400'
               }`}
             />
           </div>
@@ -78,11 +78,11 @@ export const GameLoadingScreen: React.FC<GameLoadingScreenProps> = ({
         {/* Layout-matched Skeleton Cards */}
         {isStartup ? (
           <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            <div className="md:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-6 space-y-4">
+            <div className="md:col-span-7 gaming-card rounded-2xl p-6 space-y-4">
               <div className="h-8 w-3/4 rounded-lg bg-white/[0.07] skeleton-shimmer" />
               <div className="h-4 w-5/6 rounded-md bg-white/[0.05] skeleton-shimmer" />
               <div className="pt-2 space-y-2.5">
-                <div className="h-14 w-full rounded-xl bg-violet-500/18 border border-violet-500/25 skeleton-shimmer" />
+                <div className="h-14 w-full rounded-xl bg-violet-500/18 border border-sky-400/25 skeleton-shimmer" />
                 <div className="grid grid-cols-3 gap-2.5">
                   <div className="h-12 rounded-xl bg-white/[0.05] skeleton-shimmer" />
                   <div className="h-12 rounded-xl bg-white/[0.05] skeleton-shimmer" />
@@ -91,11 +91,11 @@ export const GameLoadingScreen: React.FC<GameLoadingScreenProps> = ({
               </div>
             </div>
             <div className="hidden md:flex md:col-span-5 justify-center">
-              <div className="w-60 h-72 rounded-2xl border border-violet-500/25 bg-[#12111D] p-5 flex flex-col justify-between skeleton-shimmer">
+              <div className="w-60 h-72 rounded-2xl gaming-card-neon p-5 flex flex-col justify-between skeleton-shimmer">
                 <div className="h-3 w-16 rounded bg-white/[0.08]" />
                 <div className="space-y-2 self-center w-full">
                   <div className="h-6 w-2/3 mx-auto rounded bg-white/[0.08]" />
-                  <div className="h-1 w-10 mx-auto rounded bg-amber-400/40" />
+                  <div className="h-1 w-10 mx-auto rounded bg-sky-400/40" />
                 </div>
                 <div className="h-3 w-20 self-end rounded bg-white/[0.06]" />
               </div>
@@ -109,13 +109,13 @@ export const GameLoadingScreen: React.FC<GameLoadingScreenProps> = ({
               <div className="mt-4 h-20 w-full rounded-xl bg-black/30 border border-white/8" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-white/10 bg-[#12121A] p-5 space-y-3">
+              <div className="gaming-card rounded-2xl p-5 space-y-3">
                 <div className="h-4 w-32 rounded bg-white/[0.08] skeleton-shimmer" />
                 <div className="h-3.5 w-full rounded bg-white/[0.05] skeleton-shimmer" />
                 <div className="h-3.5 w-5/6 rounded bg-white/[0.05] skeleton-shimmer" />
                 <div className="h-3.5 w-4/6 rounded bg-white/[0.05] skeleton-shimmer" />
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#12121A] p-5 space-y-3">
+              <div className="gaming-card rounded-2xl p-5 space-y-3">
                 <div className="h-4 w-28 rounded bg-white/[0.08] skeleton-shimmer" />
                 <div className="h-8 w-full rounded-lg bg-white/[0.05] skeleton-shimmer" />
                 <div className="h-8 w-full rounded-lg bg-white/[0.05] skeleton-shimmer" />
@@ -124,7 +124,7 @@ export const GameLoadingScreen: React.FC<GameLoadingScreenProps> = ({
           </div>
         ) : (
           <div className="w-full max-w-md space-y-4">
-            <div className="rounded-2xl border border-violet-500/30 bg-[#12121A] p-6 sm:p-7 min-h-[260px] flex flex-col justify-between skeleton-shimmer">
+            <div className="gaming-card-neon rounded-2xl p-6 sm:p-7 min-h-[260px] flex flex-col justify-between skeleton-shimmer">
               <div className="flex justify-between">
                 <div className="h-3 w-16 rounded bg-white/[0.08]" />
                 <div className="h-3 w-14 rounded bg-white/[0.08]" />

@@ -1,26 +1,30 @@
 import React from 'react';
-import { Award, Home, Play } from 'lucide-react';
+import { Award, History, Home, Play } from 'lucide-react';
 import type { LeaderboardEntry, RoundOutcome } from '../types/game';
-import { formatPlayerNumber } from '../utils/gameEngine';
+import { getPlayerDisplayName } from '../utils/gameEngine';
 import { ExitGameButton } from './ExitGameControl';
 import { ParticleCanvas } from './ParticleCanvas';
 
 interface ResultScreenProps {
   outcome: RoundOutcome;
   leaderboard: LeaderboardEntry[];
+  playerNames?: Record<number, string>;
   onPlayNextRound: () => void;
   onReturnHome: () => void;
+  onViewHistory?: () => void;
 }
 
 export const ResultScreen: React.FC<ResultScreenProps> = ({
   outcome,
   leaderboard,
+  playerNames,
   onPlayNextRound,
   onReturnHome,
+  onViewHistory,
 }) => {
   const isVictory = outcome.winningSide === 'PLAYERS';
-  const imposterLabel = formatPlayerNumber(outcome.imposterPlayer);
-  const votedOutLabel = formatPlayerNumber(outcome.votedOutPlayer);
+  const imposterLabel = getPlayerDisplayName(outcome.imposterPlayer, playerNames);
+  const votedOutLabel = getPlayerDisplayName(outcome.votedOutPlayer, playerNames);
 
   return (
     <div
@@ -32,14 +36,26 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
       <header className="relative z-10 flex items-center justify-between gap-3 text-xs text-zinc-400">
         <div className="flex items-center gap-3">
-          <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
+          <span className="font-semibold uppercase tracking-[0.18em] text-sky-400">
             ROUND COMPLETED
           </span>
-          <span className="font-mono tabular-nums text-zinc-500">
+          <span className="font-mono tabular-nums text-zinc-400">
             Round {String(outcome.roundNumber).padStart(2, '0')}
           </span>
         </div>
-        <ExitGameButton onClick={onReturnHome} />
+        <div className="flex items-center gap-2">
+          {onViewHistory && (
+            <button
+              type="button"
+              onClick={onViewHistory}
+              className="min-h-[44px] px-3 rounded-xl border border-white/10 bg-[#12131D] hover:border-sky-400/35 text-zinc-300 hover:text-white transition-colors inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            >
+              <History className="w-3.5 h-3.5 text-sky-400" />
+              <span>History</span>
+            </button>
+          )}
+          <ExitGameButton onClick={onReturnHome} />
+        </div>
       </header>
 
       <main className="relative z-10 flex-1 py-5 space-y-6">
@@ -116,7 +132,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
         {/* Round Breakdown & Leaderboard */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-          <section className="md:col-span-5 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+          <section className="md:col-span-5 gaming-card rounded-2xl p-6">
             <h2 className="font-display text-lg font-bold text-white">
               ROUND SUMMARY
             </h2>
@@ -150,8 +166,12 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/8">
-                <dt className="text-zinc-400">Imposter Hint</dt>
-                <dd className="font-medium text-zinc-200">{outcome.hintShown}</dd>
+                <dt className="text-zinc-400">
+                  Hint ({outcome.hintDifficulty.toUpperCase()})
+                </dt>
+                <dd className="font-medium text-sky-200 text-right">
+                  {outcome.hintShown}
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <dt className="text-zinc-400">Group Vote</dt>
@@ -162,7 +182,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             </dl>
           </section>
 
-          <section className="md:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+          <section className="md:col-span-7 gaming-card rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-white">
                 LEADERBOARD
@@ -174,31 +194,34 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               {leaderboard.map((entry, idx) => {
                 const isTop = idx === 0 && entry.score > 0;
                 const isImposter = entry.playerNumber === outcome.imposterPlayer;
+                const displayName =
+                  entry.playerName ||
+                  getPlayerDisplayName(entry.playerNumber, playerNames);
                 return (
                   <div
                     key={entry.playerNumber}
                     className="py-3 flex items-center justify-between gap-3"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <span
-                        className={`w-6 font-mono text-xs font-bold tabular-nums ${
+                        className={`w-6 font-mono text-xs font-bold tabular-nums shrink-0 ${
                           isTop ? 'text-amber-400' : 'text-zinc-500'
                         }`}
                       >
                         #{entry.rank}
                       </span>
-                      <span className="font-mono text-sm sm:text-base font-bold text-white tabular-nums">
-                        {formatPlayerNumber(entry.playerNumber)}
+                      <span className="font-mono text-sm sm:text-base font-bold text-white tabular-nums truncate">
+                        {displayName}
                       </span>
                       {isImposter && (
-                        <span className="text-xs font-semibold text-red-400">
+                        <span className="text-xs font-semibold text-red-400 shrink-0">
                           · Imposter
                         </span>
                       )}
                     </div>
 
                     <span
-                      className={`font-mono text-sm font-bold tabular-nums ${
+                      className={`font-mono text-sm font-bold tabular-nums shrink-0 ${
                         isTop ? 'text-amber-300' : 'text-zinc-300'
                       }`}
                     >
@@ -216,7 +239,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         <button
           type="button"
           onClick={onPlayNextRound}
-          className="w-full min-h-[56px] px-6 rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-base sm:text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
+          className="w-full min-h-[56px] px-6 rounded-xl gaming-btn-primary active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-base sm:text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
         >
           <Play className="w-5 h-5 fill-current" />
           <span>PLAY NEXT ROUND</span>
@@ -225,9 +248,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         <button
           type="button"
           onClick={onReturnHome}
-          className="w-full min-h-[56px] px-6 rounded-xl border border-white/12 bg-[#13131C] hover:bg-[#1B1B27] active:translate-y-[1px] transition-all text-zinc-200 font-display text-base font-bold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
+          className="w-full min-h-[56px] px-6 rounded-xl border border-white/12 bg-[#13141F] hover:bg-[#1B1D2D] active:translate-y-[1px] transition-all text-zinc-200 font-display text-base font-bold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
         >
-          <Home className="w-5 h-5 text-zinc-400" />
+          <Home className="w-5 h-5 text-sky-400" />
           <span>RETURN TO HOME</span>
         </button>
       </footer>

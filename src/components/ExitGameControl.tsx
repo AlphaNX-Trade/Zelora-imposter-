@@ -15,7 +15,7 @@ export const ExitGameButton: React.FC<ExitGameButtonProps> = ({
       type="button"
       onClick={onClick}
       aria-label="Cancel and exit game"
-      className="min-h-[44px] px-3 rounded-xl border border-white/10 bg-[#12121A] hover:bg-red-500/12 hover:border-red-500/35 text-zinc-300 hover:text-red-200 active:scale-[0.97] transition-all inline-flex items-center justify-center gap-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 shrink-0"
+      className="min-h-[44px] px-3 rounded-xl border border-white/10 bg-[#12131D] hover:bg-red-500/12 hover:border-red-500/35 text-zinc-300 hover:text-red-200 active:scale-[0.97] transition-all inline-flex items-center justify-center gap-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 shrink-0"
     >
       <X className="w-4 h-4 shrink-0" />
       <span>{label}</span>
@@ -61,7 +61,7 @@ export const ExitGameModal: React.FC<ExitGameModalProps> = ({
       onClick={onContinue}
     >
       <div
-        className="animate-reveal-pop w-full max-w-sm rounded-2xl border border-white/12 bg-[#14141D] p-6 shadow-2xl"
+        className="animate-reveal-pop w-full max-w-sm gaming-card-neon rounded-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2">
@@ -89,7 +89,7 @@ export const ExitGameModal: React.FC<ExitGameModalProps> = ({
           <button
             type="button"
             onClick={onSaveAndExit}
-            className="w-full min-h-[48px] px-4 rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[1px] transition-all text-white font-display text-sm font-bold tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full min-h-[48px] px-4 rounded-xl gaming-btn-primary active:border-b-0 active:translate-y-[1px] transition-all text-white font-display text-sm font-bold tracking-wider flex items-center justify-center gap-2 cursor-pointer"
           >
             <Home className="w-4 h-4 shrink-0" />
             <span>SAVE &amp; EXIT TO HOME</span>

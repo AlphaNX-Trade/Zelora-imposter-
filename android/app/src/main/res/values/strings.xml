@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zelora Imposter</string>
+    <string name="title_activity_main">Zelora Imposter</string>
+    <string name="package_name">com.zeloragroups.imposter</string>
+    <string name="custom_url_scheme">com.zeloragroups.imposter</string>
+</resources>

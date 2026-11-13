@@ -1,7 +1,10 @@
 import React from 'react';
 import { Check, Eye } from 'lucide-react';
 import type { GameSession, HintDifficulty } from '../types/game';
-import { formatPlayerNumber, getHintForDifficulty } from '../utils/gameEngine';
+import {
+  getHintForDifficulty,
+  getPlayerDisplayName,
+} from '../utils/gameEngine';
 import { ExitGameButton } from './ExitGameControl';
 
 interface RevealScreenProps {
@@ -12,6 +15,12 @@ interface RevealScreenProps {
   onRequestExit: () => void;
 }
 
+const CLUE_TIER_LABELS: Record<HintDifficulty, string> = {
+  easy: 'EASY CLUE',
+  medium: 'MEDIUM CLUE',
+  hard: 'HARD CLUE',
+};
+
 export const RevealScreen: React.FC<RevealScreenProps> = ({
   session,
   hintDifficulty,
@@ -20,7 +29,10 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   onRequestExit,
 }) => {
   const currentPlayerNumber = session.revealIndex + 1;
-  const playerLabel = formatPlayerNumber(currentPlayerNumber);
+  const playerLabel = getPlayerDisplayName(
+    currentPlayerNumber,
+    session.playerNames,
+  );
   const shortNum = String(currentPlayerNumber).padStart(2, '0');
   const isImposter = currentPlayerNumber === session.imposterPlayer;
   const progressPct = ((session.revealIndex + 1) / session.playerCount) * 100;
@@ -31,18 +43,18 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       <header className="space-y-2.5">
         <div className="flex items-center justify-between gap-3 text-xs text-zinc-400">
           <div className="flex items-center gap-3">
-            <span className="font-semibold tracking-[0.18em] uppercase text-violet-400">
+            <span className="font-semibold tracking-[0.18em] uppercase text-sky-400">
               Round {String(session.roundNumber).padStart(2, '0')}
             </span>
-            <span className="font-mono tabular-nums text-zinc-500">
+            <span className="font-mono tabular-nums text-zinc-400">
               {currentPlayerNumber} of {session.playerCount}
             </span>
           </div>
           <ExitGameButton onClick={onRequestExit} />
         </div>
-        <div className="h-1 w-full rounded-full bg-white/8 overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
           <div
-            className="h-full bg-violet-500 transition-transform duration-300 origin-left"
+            className="h-full bg-gradient-to-r from-violet-500 to-sky-400 transition-transform duration-300 origin-left"
             style={{ transform: `scaleX(${progressPct / 100})` }}
           />
         </div>
@@ -51,18 +63,18 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       {/* Physical Role Card */}
       <main className="my-auto py-6">
         {session.revealStep === 'PROMPT' ? (
-          <div className="animate-reveal-pop rounded-2xl border border-white/12 bg-[#12121A] p-6 sm:p-8 flex flex-col justify-between min-h-[380px] shadow-2xl relative overflow-hidden">
+          <div className="animate-reveal-pop gaming-card-neon rounded-2xl p-6 sm:p-8 flex flex-col justify-between min-h-[380px] relative overflow-hidden">
             {/* Card top index */}
-            <div className="flex items-center justify-between font-mono text-xs text-zinc-500">
+            <div className="flex items-center justify-between font-mono text-xs text-sky-300/75">
               <span>SEAT {shortNum}</span>
               <span>PRIVATE</span>
             </div>
 
             <div className="my-auto py-6 text-center">
-              <div className="font-mono text-3xl sm:text-4xl font-bold tracking-[0.12em] text-white tabular-nums">
+              <div className="font-mono text-3xl sm:text-4xl font-bold tracking-[0.1em] text-white tabular-nums break-words">
                 {playerLabel}
               </div>
-              <div className="mt-2 text-xs font-bold uppercase tracking-[0.26em] text-violet-400">
+              <div className="mt-2 text-xs font-bold uppercase tracking-[0.26em] text-sky-400">
                 YOUR TURN
               </div>
 
@@ -73,7 +85,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
               <button
                 type="button"
                 onClick={onTapReveal}
-                className="mt-8 w-full min-h-[58px] px-5 rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-base sm:text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer"
+                className="mt-8 w-full min-h-[58px] px-5 rounded-xl gaming-btn-primary active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-base sm:text-lg font-extrabold tracking-wider flex items-center justify-center gap-2.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
               >
                 <Eye className="w-5 h-5 shrink-0" />
                 <span>TAP TO GET YOUR WORD</span>
@@ -81,21 +93,21 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </div>
 
             {/* Card bottom index */}
-            <div className="flex items-center justify-between font-mono text-xs text-zinc-600">
-              <span>{playerLabel}</span>
+            <div className="flex items-center justify-between font-mono text-xs text-zinc-500">
+              <span className="truncate max-w-[160px]">{playerLabel}</span>
               <span>HOLD PRIVATE</span>
             </div>
           </div>
         ) : isImposter ? (
-          <div className="animate-reveal-pop rounded-2xl border border-red-500/50 bg-[#170C10] p-6 sm:p-8 flex flex-col justify-between min-h-[380px] shadow-2xl relative overflow-hidden">
+          <div className="animate-reveal-pop rounded-2xl border border-red-500/50 bg-gradient-to-b from-[#1D0C12] to-[#11090D] p-6 sm:p-8 flex flex-col justify-between min-h-[380px] shadow-[0_24px_56px_-18px_rgba(239,68,68,0.45)] relative overflow-hidden">
             {/* Top red accent rule */}
             <div
               aria-hidden="true"
-              className="absolute top-0 left-0 right-0 h-1.5 bg-red-600"
+              className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-red-600"
             />
 
             <div className="flex items-center justify-between font-mono text-xs text-red-400/90 pt-1">
-              <span>{playerLabel}</span>
+              <span className="truncate max-w-[180px]">{playerLabel}</span>
               <span>ROLE CARD</span>
             </div>
 
@@ -106,9 +118,9 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
 
               <div className="mt-8 pt-6 border-t border-red-500/20">
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  YOUR HINT
+                  {CLUE_TIER_LABELS[hintDifficulty]}
                 </div>
-                <div className="mt-2 font-display text-3xl sm:text-4xl font-extrabold tracking-wider text-white">
+                <div className="mt-2 font-display text-2xl sm:text-3xl font-extrabold tracking-wide text-white text-balance">
                   {getHintForDifficulty(session.wordEntry, hintDifficulty)}
                 </div>
               </div>
@@ -120,20 +132,20 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </div>
           </div>
         ) : (
-          <div className="animate-reveal-pop rounded-2xl border border-violet-500/40 bg-[#13121E] p-6 sm:p-8 flex flex-col justify-between min-h-[380px] shadow-2xl relative overflow-hidden">
-            {/* Top violet accent rule */}
+          <div className="animate-reveal-pop gaming-card-neon rounded-2xl p-6 sm:p-8 flex flex-col justify-between min-h-[380px] relative overflow-hidden">
+            {/* Top violet-blue accent rule */}
             <div
               aria-hidden="true"
-              className="absolute top-0 left-0 right-0 h-1.5 bg-violet-500"
+              className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-violet-500 via-indigo-400 to-sky-400"
             />
 
-            <div className="flex items-center justify-between font-mono text-xs text-violet-300/90 pt-1">
-              <span>{playerLabel}</span>
+            <div className="flex items-center justify-between font-mono text-xs text-sky-300/90 pt-1">
+              <span className="truncate max-w-[180px]">{playerLabel}</span>
               <span>ROLE CARD</span>
             </div>
 
             <div className="my-auto py-6 text-center">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-300">
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">
                 YOUR SECRET WORD
               </div>
               <div className="mt-3 font-display text-4xl sm:text-5xl font-extrabold tracking-wider text-white break-words">

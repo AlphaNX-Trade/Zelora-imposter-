@@ -11,8 +11,9 @@ const flushTransition = () => {
   });
 };
 
-describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
+describe('ZELORA IMPOSTER End-to-End Flow', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -38,13 +39,14 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
       screen.getByText('Think Carefully. Speak Wisely. Find the Imposter.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /PLAY GAME/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /HISTORY/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /HOW TO PLAY/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /SETTINGS/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ABOUT/i })).toBeInTheDocument();
     expect(screen.getByText(/Developed by Zelora/i)).toBeInTheDocument();
   });
 
-  it('FINAL ACCEPTANCE TEST: 5-player round with Hard Disk -> Technology isolation, single collective vote, reveal result, and round 2 reset', () => {
+  it('FINAL ACCEPTANCE TEST: 5-player round with Hard Disk -> Technology isolation, single collective vote, reveal result, game history, and round 2 reset', () => {
     const hardDiskEntry = WORD_LIBRARY.find((w) => w.word === 'Hard Disk')!;
     const realCreate = gameEngine.createNewSession;
     vi.spyOn(gameEngine, 'createNewSession').mockImplementation(
@@ -78,10 +80,13 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
       expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
       expect(screen.queryByText(hardDiskEntry.word)).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+      fireEvent.click(
+        screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }),
+      );
 
       if (p === 3) {
         expect(screen.getByText('IMPOSTER')).toBeInTheDocument();
+        expect(screen.getByText('EASY CLUE')).toBeInTheDocument();
         expect(screen.getByText('Technology')).toBeInTheDocument();
         expect(screen.queryByText('Hard Disk')).not.toBeInTheDocument();
       } else {
@@ -141,13 +146,95 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
     expect(within(leaderboardSection).getAllByText('1 POINT')).toHaveLength(4);
     expect(within(leaderboardSection).getByText('0 POINTS')).toBeInTheDocument();
 
-    // Play Next Round resets collective vote cleanly for Round 02
+    // Game History saved -> inspect from Result header
+    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    expect(screen.getByText('Game History')).toBeInTheDocument();
+    expect(screen.getByText('Hard Disk')).toBeInTheDocument();
+    expect(screen.getByText('Crew Won')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Back/i }));
+
+    // Resume into Result and start Next Round -> resets collective vote cleanly for Round 02
+    fireEvent.click(screen.getByRole('button', { name: /RESUME ROUND 1/i }));
+    flushTransition();
     fireEvent.click(screen.getByRole('button', { name: /PLAY NEXT ROUND/i }));
     expect(screen.getByText('PREPARING ROUND 02')).toBeInTheDocument();
     flushTransition();
 
     expect(screen.getByText(/Round 02/i)).toBeInTheDocument();
     expect(screen.getAllByText('PLAYER 01').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('supports Hard hint difficulty and custom player names across Setup, Reveal, Collective Vote, and Result', () => {
+    const hardDiskEntry = WORD_LIBRARY.find((w) => w.word === 'Hard Disk')!;
+    const realCreate = gameEngine.createNewSession;
+    vi.spyOn(gameEngine, 'createNewSession').mockImplementation(
+      (settings, usedIds, existingScores, roundNum = 1) => {
+        const res = realCreate(settings, usedIds, existingScores, roundNum);
+        return {
+          ...res,
+          session: {
+            ...res.session,
+            imposterPlayer: 2,
+            wordEntry: hardDiskEntry,
+          },
+        };
+      },
+    );
+
+    render(<App />);
+    flushTransition();
+
+    fireEvent.click(screen.getByRole('button', { name: /PLAY GAME/i }));
+    fireEvent.click(screen.getByRole('button', { name: '3' }));
+
+    // Select Hard difficulty
+    fireEvent.click(screen.getByRole('button', { name: /Hard/i }));
+
+    // Edit player names
+    fireEvent.click(screen.getByRole('button', { name: /Edit Names/i }));
+    fireEvent.change(screen.getByLabelText('Name for PLAYER 01'), {
+      target: { value: 'Aarav' },
+    });
+    fireEvent.change(screen.getByLabelText('Name for PLAYER 02'), {
+      target: { value: 'Zoya' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Done Naming/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /START GAME/i }));
+    flushTransition();
+
+    // Player 01 = Aarav (Innocent)
+    expect(screen.getAllByText('Aarav').length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+    expect(screen.getByText('Hard Disk')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
+
+    // Player 02 = Zoya (Imposter receives Hard clue)
+    expect(screen.getAllByText('Zoya').length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+    expect(screen.getByText('IMPOSTER')).toBeInTheDocument();
+    expect(screen.getByText('HARD CLUE')).toBeInTheDocument();
+    expect(
+      screen.getByText('A place where forgotten memories wait'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
+
+    // Player 03 (default label)
+    fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+    fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /START VOTING/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoya' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /CONFIRM VOTE · Zoya/i }),
+    );
+    expect(screen.getByText(/Suspect: Zoya/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /REVEAL RESULT/i }));
+    flushTransition();
+
+    expect(screen.getByText('Zoya WAS THE IMPOSTER!')).toBeInTheDocument();
+    expect(screen.getByText('Hint (HARD)')).toBeInTheDocument();
   });
 
   it('handles wrong collective vote (+1 to imposter) and allows returning to discussion before vote confirmation', () => {
@@ -176,7 +263,9 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
     flushTransition();
 
     for (let i = 0; i < 3; i++) {
-      fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+      fireEvent.click(
+        screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }),
+      );
       fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
     }
 
@@ -228,7 +317,9 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /START GAME/i }));
     flushTransition();
 
-    fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }),
+    );
     expect(screen.getByText('YOUR SECRET WORD')).toBeInTheDocument();
     unmount();
 
@@ -309,7 +400,9 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
     flushTransition();
 
     for (let i = 0; i < 3; i++) {
-      fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+      fireEvent.click(
+        screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }),
+      );
       fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
     }
 
@@ -330,7 +423,9 @@ describe('ZELORA IMPOSTER Collective Voting End-to-End Flow', () => {
     flushTransition();
 
     for (let i = 0; i < 3; i++) {
-      fireEvent.click(screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }));
+      fireEvent.click(
+        screen.getByRole('button', { name: /TAP TO GET YOUR WORD/i }),
+      );
       fireEvent.click(screen.getByRole('button', { name: /DONE/i }));
     }
 
