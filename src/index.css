@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Outfit", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: #09090d;
+    color: #f8fafc;
+    font-family: var(--font-sans);
+    overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@keyframes subtle-shake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  15% {
+    transform: translate3d(-6px, 2px, 0);
+  }
+  30% {
+    transform: translate3d(6px, -2px, 0);
+  }
+  45% {
+    transform: translate3d(-4px, 1px, 0);
+  }
+  60% {
+    transform: translate3d(4px, -1px, 0);
+  }
+  75% {
+    transform: translate3d(-2px, 0, 0);
+  }
+}
+
+@keyframes reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gold-shimmer {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+.animate-subtle-shake {
+  animation: subtle-shake 0.52s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-reveal-pop {
+  animation: reveal-pop 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-gold-shimmer {
+  animation: gold-shimmer 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-subtle-shake,
+  .animate-reveal-pop,
+  .animate-gold-shimmer {
+    animation: none !important;
+  }
+}

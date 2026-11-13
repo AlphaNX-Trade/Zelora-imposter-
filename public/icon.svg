@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#141122"/>
+      <stop offset="100%" stop-color="#09090D"/>
+    </linearGradient>
+    <linearGradient id="violetGrad" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="50%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#5B21B6"/>
+    </linearGradient>
+    <linearGradient id="goldAccent" x1="200" y1="220" x2="312" y2="292" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect x="16" y="16" width="480" height="480" rx="100" stroke="#7C3AED" stroke-opacity="0.28" stroke-width="4"/>
+  <!-- Outer faceted mask / shield -->
+  <path d="M256 76L404 148V266C404 352 338 416 256 442C174 416 108 352 108 266V148L256 76Z" fill="#18152A" stroke="url(#violetGrad)" stroke-width="14" stroke-linejoin="round"/>
+  <!-- Geometric Z / Mask slash -->
+  <path d="M180 182H332L186 330H332" stroke="#F8FAFC" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Central deduction diamond eye -->
+  <path d="M256 226L288 256L256 286L224 256L256 226Z" fill="url(#goldAccent)"/>
+</svg>
