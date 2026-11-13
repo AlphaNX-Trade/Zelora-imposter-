@@ -27,7 +27,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const players = Array.from({ length: playerCount }, (_, idx) => idx + 1);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col px-5 py-6 sm:px-8 max-w-4xl mx-auto w-full">
+    <div className="safe-screen flex flex-col max-w-4xl mx-auto w-full">
       <header className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -44,9 +44,9 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
       </header>
 
       <main className="flex-1 flex flex-col justify-between py-6 gap-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
           {/* Player Count Selector */}
-          <section className="lg:col-span-5 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+          <section className="md:col-span-5 rounded-2xl border border-white/10 bg-[#12121A] p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-bold text-white">
                 Select Players
@@ -100,7 +100,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
                 value={playerCount}
                 onChange={(e) => onChangePlayerCount(Number(e.target.value))}
                 aria-label="Number of players"
-                className="w-full accent-violet-500 h-2 bg-white/10 rounded-lg cursor-pointer"
+                className="w-full zelora-range cursor-pointer"
               />
               <div className="mt-2 flex justify-between text-xs font-mono text-zinc-500 tabular-nums">
                 <span>03</span>
@@ -134,7 +134,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
           </section>
 
           {/* Numbered Players Preview */}
-          <section className="lg:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+          <section className="md:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-display text-lg font-bold text-white">
                 Seat Order
@@ -159,7 +159,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/8 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-              <span>Hint: {settings.hintDifficulty.toUpperCase()}</span>
+              <span>Hint: Category</span>
               <span aria-hidden="true">·</span>
               <span>
                 Timer:{' '}
@@ -171,7 +171,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               <span>
                 Categories:{' '}
                 {settings.selectedCategories.length === 0
-                  ? 'All 25'
+                  ? 'All 26'
                   : `${settings.selectedCategories.length} Active`}
               </span>
             </div>
@@ -182,7 +182,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
           <button
             type="button"
             onClick={onStartGame}
-            className="w-full min-h-[58px] rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-lg font-extrabold tracking-wider flex items-center justify-center gap-3 cursor-pointer"
+            className="w-full min-h-[58px] rounded-xl bg-violet-600 hover:bg-violet-500 border-b-[3px] border-violet-800 active:border-b-0 active:translate-y-[2px] transition-all text-white font-display text-lg font-extrabold tracking-wider flex items-center justify-center gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
           >
             <Play className="w-5 h-5 fill-current" />
             <span>START GAME</span>

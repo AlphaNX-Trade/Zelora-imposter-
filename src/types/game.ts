@@ -1,39 +1,38 @@
 export type HintDifficulty = 'easy' | 'medium' | 'hard';
 
 export type WordCategory =
+  | 'Technology'
+  | 'Electronics'
   | 'Animals'
+  | 'Birds'
+  | 'Countries'
+  | 'Cities'
+  | 'Travel'
+  | 'Transportation'
   | 'Food'
   | 'Fruits'
   | 'Vegetables'
   | 'Drinks'
   | 'Sports'
-  | 'Technology'
-  | 'Electronics'
-  | 'Transportation'
-  | 'Countries'
-  | 'Cities'
   | 'Nature'
   | 'Science'
   | 'Space'
   | 'Professions'
-  | 'Household objects'
   | 'Education'
   | 'Entertainment'
   | 'Movies'
   | 'Business'
-  | 'Travel'
   | 'Clothing'
-  | 'Musical instruments'
+  | 'Musical Instruments'
+  | 'Household Objects'
   | 'Buildings'
-  | 'Everyday objects';
+  | 'Everyday Objects';
 
 export interface WordEntry {
   id: string;
   word: string;
   category: WordCategory;
   hint: string;
-  mediumHint: string;
-  hardHint: string;
   difficulty: HintDifficulty;
 }
 
@@ -44,7 +43,6 @@ export type GameScreen =
   | 'DISCUSSION'
   | 'VOTING'
   | 'PRE_REVEAL'
-  | 'TIE_NOTIFICATION'
   | 'RESULT'
   | 'HOW_TO_PLAY'
   | 'SETTINGS'
@@ -67,7 +65,6 @@ export interface RoundOutcome {
   secretWord: string;
   category: WordCategory;
   hintShown: string;
-  voteCounts: Record<number, number>;
 }
 
 export interface GameSession {
@@ -77,12 +74,9 @@ export interface GameSession {
   wordEntry: WordEntry;
   revealIndex: number; // 0-based index into players (0 .. playerCount - 1)
   revealStep: 'PROMPT' | 'SECRET';
-  // Voting state
-  voterIndex: number; // 0-based index into activeVoters
-  votingHandoff: boolean; // privacy shield between voters
-  votes: Record<number, number>; // voterPlayerNumber -> targetPlayerNumber
-  candidatePool: number[]; // all players normally, or tied players during revote
-  revoteRound: number;
+  // Collective single-vote state for the entire group
+  selectedSuspect: number | null;
+  voteLocked: boolean;
   // Scores: playerNumber -> points
   scores: Record<number, number>;
   // Final computed outcome after REVEAL RESULT is tapped

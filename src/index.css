@@ -15,7 +15,20 @@
     font-family: var(--font-sans);
     overscroll-behavior-y: contain;
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
+  }
+
+  button,
+  a,
+  [role="button"],
+  input[type="range"] {
+    touch-action: manipulation;
+  }
+
+  button {
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   h1,
@@ -24,6 +37,81 @@
   .font-display {
     font-family: var(--font-display);
   }
+}
+
+/* Cross-device safe-area padding (iOS notch/Dynamic Island, Android gesture bar, tablet/laptop breathing room) */
+.safe-screen {
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .safe-screen {
+    padding-top: max(1.75rem, env(safe-area-inset-top));
+    padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}
+
+/* Touch-friendly bespoke range slider across iOS, Android, Tablet & Desktop */
+input[type="range"].zelora-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+input[type="range"].zelora-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #8b5cf6;
+  border: 2px solid #f8fafc;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+input[type="range"].zelora-range::-webkit-slider-thumb:hover {
+  background: #a78bfa;
+  transform: scale(1.08);
+}
+
+input[type="range"].zelora-range::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #8b5cf6;
+  border: 2px solid #f8fafc;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
+  cursor: pointer;
+}
+
+/* Subtle dark scrollbars for tablet/desktop scrollable panels */
+.zelora-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+}
+
+.zelora-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.zelora-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.zelora-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(139, 92, 246, 0.35);
+  border-radius: 9999px;
 }
 
 @keyframes subtle-shake {
@@ -71,6 +159,33 @@
   }
 }
 
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes zelora-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes zelora-orbit-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
 .animate-subtle-shake {
   animation: subtle-shake 0.52s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
@@ -83,10 +198,39 @@
   animation: gold-shimmer 2.4s ease-in-out infinite;
 }
 
+.animate-zelora-orbit {
+  animation: zelora-orbit 1.15s linear infinite;
+}
+
+.animate-zelora-orbit-reverse {
+  animation: zelora-orbit-reverse 1.8s linear infinite;
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(167, 139, 250, 0.09) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-subtle-shake,
   .animate-reveal-pop,
-  .animate-gold-shimmer {
+  .animate-gold-shimmer,
+  .animate-zelora-orbit,
+  .animate-zelora-orbit-reverse,
+  .skeleton-shimmer::after {
     animation: none !important;
   }
 }

@@ -91,17 +91,9 @@ export function selectSecretWord(
 
 export function getHintForDifficulty(
   wordEntry: WordEntry,
-  difficulty: HintDifficulty,
+  _difficulty: HintDifficulty,
 ): string {
-  switch (difficulty) {
-    case 'hard':
-      return wordEntry.hardHint;
-    case 'medium':
-      return wordEntry.mediumHint;
-    case 'easy':
-    default:
-      return wordEntry.hint;
-  }
+  return wordEntry.hint;
 }
 
 export function createInitialScores(playerCount: number): Record<number, number> {
@@ -132,8 +124,6 @@ export function createNewSession(
     }
   }
 
-  const candidatePool = Array.from({ length: playerCount }, (_, idx) => idx + 1);
-
   return {
     session: {
       roundNumber,
@@ -142,11 +132,8 @@ export function createNewSession(
       wordEntry,
       revealIndex: 0,
       revealStep: 'PROMPT',
-      voterIndex: 0,
-      votingHandoff: false,
-      votes: {},
-      candidatePool,
-      revoteRound: 0,
+      selectedSuspect: null,
+      voteLocked: false,
       scores,
       outcome: null,
     },
@@ -154,61 +141,20 @@ export function createNewSession(
   };
 }
 
-export function getAllowedTargetsForVoter(
-  voterPlayer: number,
-  candidatePool: number[],
-): number[] {
-  return candidatePool.filter((player) => player !== voterPlayer);
-}
-
-export function tallyVotes(
-  votes: Record<number, number>,
-  candidatePool: number[],
-): { counts: Record<number, number>; topCandidates: number[]; maxVotes: number } {
-  const counts: Record<number, number> = {};
-  for (const candidate of candidatePool) {
-    counts[candidate] = 0;
-  }
-
-  for (const target of Object.values(votes)) {
-    if (candidatePool.includes(target)) {
-      counts[target] = (counts[target] ?? 0) + 1;
-    }
-  }
-
-  let maxVotes = -1;
-  let topCandidates: number[] = [];
-
-  for (const candidate of candidatePool) {
-    const count = counts[candidate] ?? 0;
-    if (count > maxVotes) {
-      maxVotes = count;
-      topCandidates = [candidate];
-    } else if (count === maxVotes) {
-      topCandidates.push(candidate);
-    }
-  }
-
-  return { counts, topCandidates, maxVotes };
-}
-
-export function evaluateVotingResult(
+export function evaluateCollectiveVote(
   session: GameSession,
   hintDifficulty: HintDifficulty,
-):
-  | { isTie: true; tiedPlayers: number[]; voteCounts: Record<number, number> }
-  | { isTie: false; outcome: RoundOutcome; updatedScores: Record<number, number> } {
-  const { counts, topCandidates } = tallyVotes(session.votes, session.candidatePool);
-
-  if (topCandidates.length > 1) {
-    return {
-      isTie: true,
-      tiedPlayers: topCandidates,
-      voteCounts: counts,
-    };
+): { outcome: RoundOutcome; updatedScores: Record<number, number> } {
+  const votedOutPlayer = session.selectedSuspect;
+  if (
+    votedOutPlayer === null ||
+    !Number.isInteger(votedOutPlayer) ||
+    votedOutPlayer < 1 ||
+    votedOutPlayer > session.playerCount
+  ) {
+    throw new Error('Cannot evaluate round without a valid collective selection.');
   }
 
-  const votedOutPlayer = topCandidates[0];
   const imposterCaught = votedOutPlayer === session.imposterPlayer;
   const updatedScores: Record<number, number> = { ...session.scores };
 
@@ -231,11 +177,9 @@ export function evaluateVotingResult(
     secretWord: session.wordEntry.word,
     category: session.wordEntry.category,
     hintShown: getHintForDifficulty(session.wordEntry, hintDifficulty),
-    voteCounts: counts,
   };
 
   return {
-    isTie: false,
     outcome,
     updatedScores,
   };

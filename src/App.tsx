@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WifiOff } from 'lucide-react';
 import { AboutScreen } from './components/AboutScreen';
 import { DiscussionScreen } from './components/DiscussionScreen';
+import { ExitGameModal } from './components/ExitGameControl';
+import {
+  GameLoadingScreen,
+  type LoadingTransitionState,
+} from './components/GameLoadingScreen';
 import { HomeScreen } from './components/HomeScreen';
 import { HowToPlayScreen } from './components/HowToPlayScreen';
 import { PreRevealScreen } from './components/PreRevealScreen';
@@ -9,14 +14,13 @@ import { ResultScreen } from './components/ResultScreen';
 import { RevealScreen } from './components/RevealScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { SetupScreen } from './components/SetupScreen';
-import { TieScreen } from './components/TieScreen';
 import { VotingScreen } from './components/VotingScreen';
 import type { GameScreen, GameSession, GameSettings } from './types/game';
 import { audioEngine } from './utils/audio';
 import {
   clampPlayerCount,
   createNewSession,
-  evaluateVotingResult,
+  evaluateCollectiveVote,
   getSortedLeaderboard,
 } from './utils/gameEngine';
 import {
@@ -30,10 +34,8 @@ import {
   saveUsedWordIds,
 } from './utils/storage';
 
-interface TieState {
-  tiedPlayers: number[];
-  voteCounts: Record<number, number>;
-}
+const STARTUP_LOADING_MS = 240;
+const TRANSITION_LOADING_MS = 280;
 
 export default function App() {
   const [settings, setSettings] = useState<GameSettings>(() => loadSettings());
@@ -44,21 +46,92 @@ export default function App() {
   const [session, setSession] = useState<GameSession | null>(
     () => savedState.session,
   );
-  const [screen, setScreen] = useState<GameScreen>('HOME');
+  const [screen, setScreen] = useState<GameScreen>(() => {
+    if (!savedState.session || !savedState.screen) return 'HOME';
+    if (savedState.screen === 'RESULT' && !savedState.session.outcome) {
+      return savedState.session.voteLocked &&
+        savedState.session.selectedSuspect !== null
+        ? 'PRE_REVEAL'
+        : 'DISCUSSION';
+    }
+    if (
+      savedState.screen === 'PRE_REVEAL' &&
+      (!savedState.session.voteLocked ||
+        savedState.session.selectedSuspect === null)
+    ) {
+      return 'VOTING';
+    }
+    if (savedState.screen === 'VOTING' && savedState.session.voteLocked) {
+      return savedState.session.outcome ? 'RESULT' : 'PRE_REVEAL';
+    }
+    return savedState.screen;
+  });
   const [setupPlayerCount, setSetupPlayerCount] = useState<number>(() =>
     clampPlayerCount(loadSettings().playerCount),
   );
-  const [tieState, setTieState] = useState<TieState | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
+  const [loadingTransition, setLoadingTransition] =
+    useState<LoadingTransitionState | null>(() => ({
+      mode: 'startup',
+      title: savedState.session ? 'RESTORING SESSION' : 'ZELORA IMPOSTER',
+      subtitle: savedState.session
+        ? 'Recovering your saved pass-and-play round...'
+        : 'Loading 572-word offline deck...',
+      playerCount: savedState.session?.playerCount,
+      roundNumber: savedState.session?.roundNumber,
+    }));
 
-  // Sync audio configuration
+  const [exitModalOpen, setExitModalOpen] = useState(false);
+
+  const transitionTimerRef = useRef<number | null>(null);
+  const isTransitioningRef = useRef(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setLoadingTransition((prev) => (prev?.mode === 'startup' ? null : prev));
+    }, STARTUP_LOADING_MS);
+    return () => {
+      window.clearTimeout(id);
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+    };
+  }, []);
+
+  const runSessionTransition = useCallback(
+    (
+      nextTransition: LoadingTransitionState,
+      commitFn: () => void,
+      durationMs: number = TRANSITION_LOADING_MS,
+    ) => {
+      if (isTransitioningRef.current) return;
+      isTransitioningRef.current = true;
+
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+
+      setLoadingTransition(nextTransition);
+
+      transitionTimerRef.current = window.setTimeout(() => {
+        transitionTimerRef.current = null;
+        try {
+          commitFn();
+        } finally {
+          isTransitioningRef.current = false;
+          setLoadingTransition(null);
+        }
+      }, durationMs);
+    },
+    [],
+  );
+
   useEffect(() => {
     audioEngine.configure(settings.soundEnabled, settings.musicEnabled);
   }, [settings.soundEnabled, settings.musicEnabled]);
 
-  // Unlock audio context on first user gesture
   useEffect(() => {
     const unlock = () => {
       audioEngine.unlock();
@@ -68,7 +141,6 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
-  // Track online/offline status for subtle offline indicator
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
@@ -80,29 +152,26 @@ export default function App() {
     };
   }, []);
 
-  // Persist active gameplay state on transitions
   useEffect(() => {
-    const gameplayScreens: GameScreen[] = [
+    const persistableScreens: GameScreen[] = [
+      'HOME',
       'REVEAL',
       'DISCUSSION',
       'VOTING',
       'PRE_REVEAL',
-      'TIE_NOTIFICATION',
       'RESULT',
     ];
-    if (session && gameplayScreens.includes(screen)) {
+    if (session && persistableScreens.includes(screen)) {
       saveActiveGameState(session, screen);
     }
   }, [session, screen]);
 
-  // Prevent accidental browser back-navigation into previous reveal/voting secrets
   useEffect(() => {
     const sensitiveScreens: GameScreen[] = [
       'REVEAL',
       'DISCUSSION',
       'VOTING',
       'PRE_REVEAL',
-      'TIE_NOTIFICATION',
     ];
     if (!sensitiveScreens.includes(screen)) return;
 
@@ -111,10 +180,27 @@ export default function App() {
       window.history.pushState({ zeloraGuard: true }, '');
     };
     window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [screen]);
+
+  useEffect(() => {
+    const escapableScreens: GameScreen[] = [
+      'SETUP',
+      'HOW_TO_PLAY',
+      'SETTINGS',
+      'ABOUT',
+    ];
+    if (!escapableScreens.includes(screen) || loadingTransition) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        audioEngine.playTap();
+        setScreen('HOME');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [screen, loadingTransition]);
 
   const handleUpdateSettings = useCallback((next: GameSettings) => {
     setSettings(next);
@@ -124,46 +210,68 @@ export default function App() {
 
   const handleStartFreshGame = useCallback(
     (playerCount: number) => {
+      const clampedCount = clampPlayerCount(playerCount);
       audioEngine.playTap();
-      const updatedSettings: GameSettings = {
-        ...settings,
-        playerCount: clampPlayerCount(playerCount),
-      };
-      setSettings(updatedSettings);
-      saveSettings(updatedSettings);
 
-      const { session: newSession, updatedUsedIds } = createNewSession(
-        updatedSettings,
-        usedWordIds,
+      runSessionTransition(
+        {
+          mode: 'dealing',
+          title: 'SHUFFLING DECK',
+          subtitle: `Assigning secret roles for ${clampedCount} players...`,
+          playerCount: clampedCount,
+          roundNumber: 1,
+        },
+        () => {
+          const updatedSettings: GameSettings = {
+            ...settings,
+            playerCount: clampedCount,
+          };
+          setSettings(updatedSettings);
+          saveSettings(updatedSettings);
+
+          const { session: newSession, updatedUsedIds } = createNewSession(
+            updatedSettings,
+            usedWordIds,
+          );
+          setUsedWordIds(updatedUsedIds);
+          saveUsedWordIds(updatedUsedIds);
+          setSession(newSession);
+          setScreen('REVEAL');
+        },
       );
-      setUsedWordIds(updatedUsedIds);
-      saveUsedWordIds(updatedUsedIds);
-      setSession(newSession);
-      setTieState(null);
-      setScreen('REVEAL');
     },
-    [settings, usedWordIds],
+    [settings, usedWordIds, runSessionTransition],
   );
 
   const handleResumeGame = useCallback(() => {
     if (!session) return;
     audioEngine.playTap();
-    if (session.outcome) {
-      setScreen('RESULT');
-    } else if (
-      Object.keys(session.votes).length >= session.playerCount
-    ) {
-      setScreen('PRE_REVEAL');
-    } else if (session.revealIndex >= session.playerCount) {
-      setScreen('DISCUSSION');
-    } else {
-      setSession({ ...session, revealStep: 'PROMPT' });
-      setScreen('REVEAL');
-    }
-  }, [session]);
+
+    runSessionTransition(
+      {
+        mode: 'resuming',
+        title: `RESUMING ROUND ${String(session.roundNumber).padStart(2, '0')}`,
+        subtitle: `Restoring ${session.playerCount}-player session privately...`,
+        playerCount: session.playerCount,
+        roundNumber: session.roundNumber,
+      },
+      () => {
+        if (session.outcome) {
+          setScreen('RESULT');
+        } else if (session.voteLocked && session.selectedSuspect !== null) {
+          setScreen('PRE_REVEAL');
+        } else if (session.revealIndex >= session.playerCount) {
+          setScreen('DISCUSSION');
+        } else {
+          setSession({ ...session, revealStep: 'PROMPT' });
+          setScreen('REVEAL');
+        }
+      },
+    );
+  }, [session, runSessionTransition]);
 
   const handleTapRevealWord = useCallback(() => {
-    if (!session) return;
+    if (!session || session.revealStep === 'SECRET') return;
     const currentPlayer = session.revealIndex + 1;
     if (currentPlayer === session.imposterPlayer) {
       audioEngine.playRevealImposter();
@@ -177,13 +285,13 @@ export default function App() {
   }, [session]);
 
   const handleTapDoneReveal = useCallback(() => {
-    if (!session) return;
+    if (!session || session.revealStep !== 'SECRET') return;
     audioEngine.playDone();
     const nextIndex = session.revealIndex + 1;
     if (nextIndex >= session.playerCount) {
       setSession({
         ...session,
-        revealIndex: nextIndex,
+        revealIndex: session.playerCount,
         revealStep: 'PROMPT',
       });
       setScreen('DISCUSSION');
@@ -199,299 +307,327 @@ export default function App() {
   const handleStartVoting = useCallback(() => {
     if (!session) return;
     audioEngine.playTap();
-    setSession({
-      ...session,
-      voterIndex: 0,
-      votingHandoff: false,
-      votes: {},
-    });
+    if (session.outcome) {
+      setScreen('RESULT');
+      return;
+    }
+    if (session.voteLocked && session.selectedSuspect !== null) {
+      setScreen('PRE_REVEAL');
+      return;
+    }
     setScreen('VOTING');
   }, [session]);
 
-  const handleConfirmVote = useCallback(
+  const handleBackToDiscussion = useCallback(() => {
+    if (!session || session.voteLocked || session.outcome !== null) return;
+    audioEngine.playTap();
+    setScreen('DISCUSSION');
+  }, [session]);
+
+  const handleConfirmCollectiveVote = useCallback(
     (targetPlayer: number) => {
-      if (!session) return;
-      const currentVoter = session.voterIndex + 1;
-      // Prevent duplicate voting and self-voting
-      if (session.votes[currentVoter] !== undefined) return;
-      if (targetPlayer === currentVoter) return;
-      if (!session.candidatePool.includes(targetPlayer)) return;
+      if (
+        !session ||
+        session.voteLocked ||
+        session.selectedSuspect !== null ||
+        session.outcome !== null
+      ) {
+        return;
+      }
+      if (
+        !Number.isInteger(targetPlayer) ||
+        targetPlayer < 1 ||
+        targetPlayer > session.playerCount
+      ) {
+        return;
+      }
 
       audioEngine.playVoteLock();
-      const nextVotes = {
-        ...session.votes,
-        [currentVoter]: targetPlayer,
-      };
-      const nextVoterIndex = session.voterIndex + 1;
-
-      if (nextVoterIndex >= session.playerCount) {
-        setSession({
-          ...session,
-          votes: nextVotes,
-          voterIndex: nextVoterIndex,
-          votingHandoff: false,
-        });
-        setScreen('PRE_REVEAL');
-      } else {
-        setSession({
-          ...session,
-          votes: nextVotes,
-          voterIndex: nextVoterIndex,
-          votingHandoff: true,
-        });
-      }
+      setSession({
+        ...session,
+        selectedSuspect: targetPlayer,
+        voteLocked: true,
+      });
+      setScreen('PRE_REVEAL');
     },
     [session],
   );
 
-  const handleStartNextVoter = useCallback(() => {
-    if (!session) return;
-    audioEngine.playTap();
-    setSession({
-      ...session,
-      votingHandoff: false,
-    });
-  }, [session]);
-
   const handleRevealResult = useCallback(() => {
-    if (!session) return;
-    const evaluation = evaluateVotingResult(session, settings.hintDifficulty);
-
-    if (evaluation.isTie) {
-      audioEngine.playTimerEnd();
-      setTieState({
-        tiedPlayers: evaluation.tiedPlayers,
-        voteCounts: evaluation.voteCounts,
-      });
-      setScreen('TIE_NOTIFICATION');
+    if (
+      !session ||
+      session.outcome !== null ||
+      !session.voteLocked ||
+      session.selectedSuspect === null
+    ) {
       return;
     }
 
-    if (evaluation.outcome.winningSide === 'PLAYERS') {
-      audioEngine.playVictory();
-    } else {
-      audioEngine.playDefeat();
-    }
+    audioEngine.unlock();
 
-    setTieState(null);
-    setSession({
-      ...session,
-      scores: evaluation.updatedScores,
-      outcome: evaluation.outcome,
-    });
-    setScreen('RESULT');
-  }, [session, settings.hintDifficulty]);
+    runSessionTransition(
+      {
+        mode: 'tallying',
+        title: 'CHECKING GROUP VOTE',
+        subtitle: 'Uncovering the imposter & updating leaderboard...',
+        playerCount: session.playerCount,
+        roundNumber: session.roundNumber,
+      },
+      () => {
+        const evaluation = evaluateCollectiveVote(
+          session,
+          settings.hintDifficulty,
+        );
 
-  const handleStartRevote = useCallback(() => {
-    if (!session || !tieState) return;
-    audioEngine.playTap();
-    setSession({
-      ...session,
-      candidatePool: tieState.tiedPlayers,
-      voterIndex: 0,
-      votingHandoff: false,
-      votes: {},
-      revoteRound: session.revoteRound + 1,
-    });
-    setTieState(null);
-    setScreen('VOTING');
-  }, [session, tieState]);
+        if (evaluation.outcome.winningSide === 'PLAYERS') {
+          audioEngine.playVictory();
+        } else {
+          audioEngine.playDefeat();
+        }
+
+        setSession({
+          ...session,
+          scores: evaluation.updatedScores,
+          outcome: evaluation.outcome,
+        });
+        setScreen('RESULT');
+      },
+    );
+  }, [session, settings.hintDifficulty, runSessionTransition]);
 
   const handlePlayNextRound = useCallback(() => {
     if (!session) return;
     audioEngine.playTap();
-    const { session: nextRoundSession, updatedUsedIds } = createNewSession(
-      { ...settings, playerCount: session.playerCount },
-      usedWordIds,
-      session.scores,
-      session.roundNumber + 1,
+    const nextRound = session.roundNumber + 1;
+
+    runSessionTransition(
+      {
+        mode: 'next-round',
+        title: `PREPARING ROUND ${String(nextRound).padStart(2, '0')}`,
+        subtitle: 'Cycling offline word deck & carrying over scores...',
+        playerCount: session.playerCount,
+        roundNumber: nextRound,
+      },
+      () => {
+        const { session: nextRoundSession, updatedUsedIds } = createNewSession(
+          { ...settings, playerCount: session.playerCount },
+          usedWordIds,
+          session.scores,
+          nextRound,
+        );
+        setUsedWordIds(updatedUsedIds);
+        saveUsedWordIds(updatedUsedIds);
+        setSession(nextRoundSession);
+        setScreen('REVEAL');
+      },
     );
-    setUsedWordIds(updatedUsedIds);
-    saveUsedWordIds(updatedUsedIds);
-    setSession(nextRoundSession);
-    setTieState(null);
-    setScreen('REVEAL');
-  }, [session, settings, usedWordIds]);
+  }, [session, settings, usedWordIds, runSessionTransition]);
 
   const handleReturnHome = useCallback(() => {
     audioEngine.playTap();
+    setExitModalOpen(false);
+    setSession((prev) => (prev ? { ...prev, revealStep: 'PROMPT' } : null));
+    setScreen('HOME');
+  }, []);
+
+  const handleRequestExit = useCallback(() => {
+    audioEngine.playTap();
+    setExitModalOpen(true);
+  }, []);
+
+  const handleCancelAndExitGame = useCallback(() => {
+    audioEngine.playTap();
+    setExitModalOpen(false);
+    clearSessionStorage();
+    setSession(null);
     setScreen('HOME');
   }, []);
 
   const handleResetCurrentGame = useCallback(() => {
     clearSessionStorage();
     setSession(null);
-    setTieState(null);
   }, []);
 
   const handleClearHistory = useCallback(() => {
     clearAllLocalHistory();
     setSession(null);
-    setTieState(null);
     setUsedWordIds([]);
   }, []);
 
   return (
     <div className="min-h-[100dvh] bg-[#09090D] text-[#F8FAFC] relative overflow-x-hidden">
-      {/* Subtle atmospheric background glow */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(124,58,237,0.13),transparent_55%)]"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(124,58,237,0.12),transparent_55%)]"
       />
 
-      {/* Offline status notice only when actually offline */}
       {!isOnline && (
         <div
           role="status"
-          className="relative z-40 bg-violet-950/80 border-b border-violet-500/25 px-4 py-1.5 text-center text-xs text-violet-200 flex items-center justify-center gap-2"
+          className="relative z-40 bg-violet-950/80 border-b border-violet-500/25 px-4 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] text-center text-xs text-violet-200 flex items-center justify-center gap-2"
         >
           <WifiOff className="w-3.5 h-3.5 shrink-0" />
-          <span>Offline Mode · Full game &amp; 550 words available locally</span>
+          <span>Offline Mode · Game &amp; 572 words available locally</span>
         </div>
       )}
 
       <div className="relative z-10">
-        {screen === 'HOME' && (
-          <HomeScreen
-            hasActiveSession={!!session}
-            activeRound={session?.roundNumber ?? 1}
-            activePlayerCount={session?.playerCount ?? settings.playerCount}
-            soundEnabled={settings.soundEnabled}
-            onToggleSound={() =>
-              handleUpdateSettings({
-                ...settings,
-                soundEnabled: !settings.soundEnabled,
-              })
-            }
-            onPlayGame={() => {
-              audioEngine.playTap();
-              setSetupPlayerCount(clampPlayerCount(settings.playerCount));
-              setScreen('SETUP');
-            }}
-            onResumeGame={handleResumeGame}
-            onHowToPlay={() => {
-              audioEngine.playTap();
-              setScreen('HOW_TO_PLAY');
-            }}
-            onSettings={() => {
-              audioEngine.playTap();
-              setScreen('SETTINGS');
-            }}
-            onAbout={() => {
-              audioEngine.playTap();
-              setScreen('ABOUT');
-            }}
-          />
-        )}
-
-        {screen === 'SETUP' && (
-          <SetupScreen
-            playerCount={setupPlayerCount}
-            settings={settings}
-            onChangePlayerCount={(count) => {
-              audioEngine.playTap();
-              setSetupPlayerCount(clampPlayerCount(count));
-            }}
-            onStartGame={() => handleStartFreshGame(setupPlayerCount)}
-            onBack={() => {
-              audioEngine.playTap();
-              setScreen('HOME');
-            }}
-          />
-        )}
-
-        {screen === 'REVEAL' && session && (
-          <RevealScreen
-            session={session}
-            hintDifficulty={settings.hintDifficulty}
-            onTapReveal={handleTapRevealWord}
-            onTapDone={handleTapDoneReveal}
-          />
-        )}
-
-        {screen === 'DISCUSSION' && session && (
-          <DiscussionScreen
-            roundNumber={session.roundNumber}
-            playerCount={session.playerCount}
-            timerDurationSeconds={settings.discussionTimerSeconds}
-            onStartVoting={handleStartVoting}
-          />
-        )}
-
-        {screen === 'VOTING' && session && (
-          <VotingScreen
-            session={session}
-            onConfirmVote={handleConfirmVote}
-            onStartNextVoter={handleStartNextVoter}
-          />
-        )}
-
-        {screen === 'PRE_REVEAL' && session && (
-          <PreRevealScreen
-            roundNumber={session.roundNumber}
-            playerCount={session.playerCount}
-            onRevealResult={handleRevealResult}
-          />
-        )}
-
-        {screen === 'TIE_NOTIFICATION' && session && tieState && (
-          <TieScreen
-            roundNumber={session.roundNumber}
-            tiedPlayers={tieState.tiedPlayers}
-            voteCounts={tieState.voteCounts}
-            revoteRound={session.revoteRound}
-            onStartRevote={handleStartRevote}
-          />
-        )}
-
-        {screen === 'RESULT' && session && session.outcome && (
-          <ResultScreen
-            outcome={session.outcome}
-            leaderboard={getSortedLeaderboard(
-              session.scores,
-              session.playerCount,
+        {loadingTransition ? (
+          <GameLoadingScreen transition={loadingTransition} />
+        ) : (
+          <>
+            {screen === 'HOME' && (
+              <HomeScreen
+                hasActiveSession={!!session}
+                activeRound={session?.roundNumber ?? 1}
+                activePlayerCount={session?.playerCount ?? settings.playerCount}
+                soundEnabled={settings.soundEnabled}
+                onToggleSound={() =>
+                  handleUpdateSettings({
+                    ...settings,
+                    soundEnabled: !settings.soundEnabled,
+                  })
+                }
+                onPlayGame={() => {
+                  audioEngine.playTap();
+                  setSetupPlayerCount(clampPlayerCount(settings.playerCount));
+                  setScreen('SETUP');
+                }}
+                onResumeGame={handleResumeGame}
+                onHowToPlay={() => {
+                  audioEngine.playTap();
+                  setScreen('HOW_TO_PLAY');
+                }}
+                onSettings={() => {
+                  audioEngine.playTap();
+                  setScreen('SETTINGS');
+                }}
+                onAbout={() => {
+                  audioEngine.playTap();
+                  setScreen('ABOUT');
+                }}
+              />
             )}
-            onPlayNextRound={handlePlayNextRound}
-            onReturnHome={handleReturnHome}
-          />
-        )}
 
-        {screen === 'HOW_TO_PLAY' && (
-          <HowToPlayScreen
-            onBack={() => {
-              audioEngine.playTap();
-              setScreen('HOME');
-            }}
-            onPlayNow={() => {
-              audioEngine.playTap();
-              setSetupPlayerCount(clampPlayerCount(settings.playerCount));
-              setScreen('SETUP');
-            }}
-          />
-        )}
+            {screen === 'SETUP' && (
+              <SetupScreen
+                playerCount={setupPlayerCount}
+                settings={settings}
+                onChangePlayerCount={(count) => {
+                  audioEngine.playTap();
+                  setSetupPlayerCount(clampPlayerCount(count));
+                }}
+                onStartGame={() => handleStartFreshGame(setupPlayerCount)}
+                onBack={() => {
+                  audioEngine.playTap();
+                  setScreen('HOME');
+                }}
+              />
+            )}
 
-        {screen === 'SETTINGS' && (
-          <SettingsScreen
-            settings={settings}
-            hasActiveSession={!!session}
-            usedWordCount={usedWordIds.length}
-            onUpdateSettings={handleUpdateSettings}
-            onResetCurrentGame={handleResetCurrentGame}
-            onClearHistory={handleClearHistory}
-            onBack={() => {
-              audioEngine.playTap();
-              setScreen('HOME');
-            }}
-          />
-        )}
+            {screen === 'REVEAL' && session && (
+              <RevealScreen
+                session={session}
+                hintDifficulty={settings.hintDifficulty}
+                onTapReveal={handleTapRevealWord}
+                onTapDone={handleTapDoneReveal}
+                onRequestExit={handleRequestExit}
+              />
+            )}
 
-        {screen === 'ABOUT' && (
-          <AboutScreen
-            onBack={() => {
-              audioEngine.playTap();
-              setScreen('HOME');
-            }}
-          />
+            {screen === 'DISCUSSION' && session && (
+              <DiscussionScreen
+                roundNumber={session.roundNumber}
+                playerCount={session.playerCount}
+                timerDurationSeconds={settings.discussionTimerSeconds}
+                onStartVoting={handleStartVoting}
+                onRequestExit={handleRequestExit}
+              />
+            )}
+
+            {screen === 'VOTING' && session && (
+              <VotingScreen
+                session={session}
+                onConfirmVote={handleConfirmCollectiveVote}
+                onBackToDiscussion={handleBackToDiscussion}
+                onRequestExit={handleRequestExit}
+              />
+            )}
+
+            {screen === 'PRE_REVEAL' &&
+              session &&
+              session.selectedSuspect !== null && (
+                <PreRevealScreen
+                  roundNumber={session.roundNumber}
+                  selectedSuspect={session.selectedSuspect}
+                  onRevealResult={handleRevealResult}
+                  onRequestExit={handleRequestExit}
+                />
+              )}
+
+            {screen === 'RESULT' && session && session.outcome && (
+              <ResultScreen
+                outcome={session.outcome}
+                leaderboard={getSortedLeaderboard(
+                  session.scores,
+                  session.playerCount,
+                )}
+                onPlayNextRound={handlePlayNextRound}
+                onReturnHome={handleReturnHome}
+              />
+            )}
+
+            {screen === 'HOW_TO_PLAY' && (
+              <HowToPlayScreen
+                onBack={() => {
+                  audioEngine.playTap();
+                  setScreen('HOME');
+                }}
+                onPlayNow={() => {
+                  audioEngine.playTap();
+                  setSetupPlayerCount(clampPlayerCount(settings.playerCount));
+                  setScreen('SETUP');
+                }}
+              />
+            )}
+
+            {screen === 'SETTINGS' && (
+              <SettingsScreen
+                settings={settings}
+                hasActiveSession={!!session}
+                usedWordCount={usedWordIds.length}
+                onUpdateSettings={handleUpdateSettings}
+                onResetCurrentGame={handleResetCurrentGame}
+                onClearHistory={handleClearHistory}
+                onBack={() => {
+                  audioEngine.playTap();
+                  setScreen('HOME');
+                }}
+              />
+            )}
+
+            {screen === 'ABOUT' && (
+              <AboutScreen
+                onBack={() => {
+                  audioEngine.playTap();
+                  setScreen('HOME');
+                }}
+              />
+            )}
+
+            {session && (
+              <ExitGameModal
+                isOpen={exitModalOpen}
+                roundNumber={session.roundNumber}
+                onContinue={() => {
+                  audioEngine.playTap();
+                  setExitModalOpen(false);
+                }}
+                onSaveAndExit={handleReturnHome}
+                onCancelGame={handleCancelAndExitGame}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

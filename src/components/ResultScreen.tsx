@@ -2,6 +2,7 @@ import React from 'react';
 import { Award, Home, Play } from 'lucide-react';
 import type { LeaderboardEntry, RoundOutcome } from '../types/game';
 import { formatPlayerNumber } from '../utils/gameEngine';
+import { ExitGameButton } from './ExitGameControl';
 import { ParticleCanvas } from './ParticleCanvas';
 
 interface ResultScreenProps {
@@ -23,19 +24,22 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
   return (
     <div
-      className={`min-h-[100dvh] flex flex-col px-5 py-6 sm:px-8 max-w-4xl mx-auto w-full relative ${
+      className={`safe-screen flex flex-col max-w-4xl mx-auto w-full relative ${
         !isVictory ? 'animate-subtle-shake' : ''
       }`}
     >
       <ParticleCanvas mode={isVictory ? 'victory' : 'defeat'} />
 
-      <header className="relative z-10 flex items-center justify-between text-xs text-zinc-400">
-        <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
-          ROUND COMPLETED
-        </span>
-        <span className="font-mono tabular-nums">
-          Round {String(outcome.roundNumber).padStart(2, '0')}
-        </span>
+      <header className="relative z-10 flex items-center justify-between gap-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
+            ROUND COMPLETED
+          </span>
+          <span className="font-mono tabular-nums text-zinc-500">
+            Round {String(outcome.roundNumber).padStart(2, '0')}
+          </span>
+        </div>
+        <ExitGameButton onClick={onReturnHome} />
       </header>
 
       <main className="relative z-10 flex-1 py-5 space-y-6">
@@ -91,7 +95,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 {imposterLabel}
               </div>
               <div className="mt-1.5 text-xs text-zinc-400">
-                Most votes went to {votedOutLabel}.
+                Group voted for {votedOutLabel}.
               </div>
 
               <div className="mt-4 pt-4 border-t border-white/10">
@@ -111,8 +115,8 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         )}
 
         {/* Round Breakdown & Leaderboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          <section className="lg:col-span-5 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          <section className="md:col-span-5 rounded-2xl border border-white/10 bg-[#12121A] p-6">
             <h2 className="font-display text-lg font-bold text-white">
               ROUND SUMMARY
             </h2>
@@ -150,16 +154,15 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 <dd className="font-medium text-zinc-200">{outcome.hintShown}</dd>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <dt className="text-zinc-400">Top Suspect</dt>
+                <dt className="text-zinc-400">Group Vote</dt>
                 <dd className="font-mono font-semibold text-zinc-200 tabular-nums">
-                  {votedOutLabel} (
-                  {outcome.voteCounts[outcome.votedOutPlayer] ?? 0} votes)
+                  {votedOutLabel}
                 </dd>
               </div>
             </dl>
           </section>
 
-          <section className="lg:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-6">
+          <section className="md:col-span-7 rounded-2xl border border-white/10 bg-[#12121A] p-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-white">
                 LEADERBOARD
@@ -167,7 +170,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               <Award className="w-5 h-5 text-amber-400" />
             </div>
 
-            <div className="mt-4 divide-y divide-white/8 max-h-[340px] overflow-y-auto pr-1">
+            <div className="mt-4 divide-y divide-white/8 max-h-[340px] overflow-y-auto pr-1 zelora-scroll">
               {leaderboard.map((entry, idx) => {
                 const isTop = idx === 0 && entry.score > 0;
                 const isImposter = entry.playerNumber === outcome.imposterPlayer;

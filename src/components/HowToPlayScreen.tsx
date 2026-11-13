@@ -20,7 +20,7 @@ const STEPS = [
   {
     num: '03',
     title: 'Spot the Imposter',
-    desc: 'Every innocent player receives the same secret word. One random player is the Imposter and receives only a related hint.',
+    desc: 'Every innocent player receives the exact same secret word. One random player is the Imposter and receives only the general category hint.',
   },
   {
     num: '04',
@@ -29,8 +29,8 @@ const STEPS = [
   },
   {
     num: '05',
-    title: 'Private Vote & Reveal',
-    desc: 'Each player votes privately for who they suspect (no self-votes). Once everyone has voted, tap REVEAL RESULT to uncover the truth!',
+    title: 'Collective Vote & Reveal',
+    desc: 'Discuss together and agree on ONE suspect as a group. Confirm the single collective vote, then tap REVEAL RESULT to uncover the truth!',
   },
 ];
 
@@ -39,7 +39,7 @@ export const HowToPlayScreen: React.FC<HowToPlayScreenProps> = ({
   onPlayNow,
 }) => {
   return (
-    <div className="min-h-[100dvh] flex flex-col px-5 py-6 sm:px-8 max-w-3xl mx-auto w-full">
+    <div className="safe-screen flex flex-col max-w-3xl mx-auto w-full">
       <header className="flex items-center justify-between gap-4">
         <button
           type="button"

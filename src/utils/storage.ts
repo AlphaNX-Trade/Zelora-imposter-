@@ -1,5 +1,16 @@
-import type { GameScreen, GameSession, GameSettings } from '../types/game';
-import { DEFAULT_PLAYERS, clampPlayerCount } from './gameEngine';
+import { ALL_CATEGORIES } from '../data/words';
+import type {
+  GameScreen,
+  GameSession,
+  GameSettings,
+  WordCategory,
+} from '../types/game';
+import {
+  DEFAULT_PLAYERS,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  clampPlayerCount,
+} from './gameEngine';
 
 const KEYS = {
   SETTINGS: 'zelora_imposter_settings_v1',
@@ -16,6 +27,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   hintDifficulty: 'easy',
   selectedCategories: [],
 };
+
+const VALID_CATEGORY_SET = new Set<string>(ALL_CATEGORIES);
 
 function getStorage(): Storage | null {
   try {
@@ -35,6 +48,15 @@ export function loadSettings(): GameSettings {
     const raw = storage.getItem(KEYS.SETTINGS);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<GameSettings>;
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_SETTINGS };
+
+    const validCategories = Array.isArray(parsed.selectedCategories)
+      ? parsed.selectedCategories.filter(
+          (cat): cat is WordCategory =>
+            typeof cat === 'string' && VALID_CATEGORY_SET.has(cat),
+        )
+      : [];
+
     return {
       soundEnabled:
         typeof parsed.soundEnabled === 'boolean'
@@ -46,12 +68,13 @@ export function loadSettings(): GameSettings {
           : DEFAULT_SETTINGS.musicEnabled,
       discussionTimerSeconds:
         typeof parsed.discussionTimerSeconds === 'number' &&
+        Number.isFinite(parsed.discussionTimerSeconds) &&
         parsed.discussionTimerSeconds >= 0 &&
         parsed.discussionTimerSeconds <= 300
           ? parsed.discussionTimerSeconds
           : DEFAULT_SETTINGS.discussionTimerSeconds,
       playerCount:
-        typeof parsed.playerCount === 'number'
+        typeof parsed.playerCount === 'number' && Number.isFinite(parsed.playerCount)
           ? clampPlayerCount(parsed.playerCount)
           : DEFAULT_SETTINGS.playerCount,
       hintDifficulty:
@@ -60,9 +83,7 @@ export function loadSettings(): GameSettings {
         parsed.hintDifficulty === 'hard'
           ? parsed.hintDifficulty
           : DEFAULT_SETTINGS.hintDifficulty,
-      selectedCategories: Array.isArray(parsed.selectedCategories)
-        ? parsed.selectedCategories
-        : [],
+      selectedCategories: validCategories,
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -75,7 +96,7 @@ export function saveSettings(settings: GameSettings): void {
   try {
     storage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
   } catch {
-    // Ignore quota errors
+    // Storage unavailable or full
   }
 }
 
@@ -100,8 +121,61 @@ export function saveUsedWordIds(ids: string[]): void {
   try {
     storage.setItem(KEYS.USED_WORDS, JSON.stringify(ids));
   } catch {
-    // Ignore quota errors
+    // Storage unavailable or full
   }
+}
+
+function isValidSession(candidate: unknown): candidate is GameSession {
+  if (!candidate || typeof candidate !== 'object') return false;
+  const s = candidate as GameSession;
+
+  if (
+    !Number.isInteger(s.playerCount) ||
+    s.playerCount < MIN_PLAYERS ||
+    s.playerCount > MAX_PLAYERS
+  ) {
+    return false;
+  }
+  if (
+    !Number.isInteger(s.imposterPlayer) ||
+    s.imposterPlayer < 1 ||
+    s.imposterPlayer > s.playerCount
+  ) {
+    return false;
+  }
+  if (!Number.isInteger(s.roundNumber) || s.roundNumber < 1) {
+    return false;
+  }
+  if (
+    !s.wordEntry ||
+    typeof s.wordEntry.id !== 'string' ||
+    typeof s.wordEntry.word !== 'string' ||
+    typeof s.wordEntry.category !== 'string' ||
+    typeof s.wordEntry.hint !== 'string'
+  ) {
+    return false;
+  }
+  if (
+    !Number.isInteger(s.revealIndex) ||
+    s.revealIndex < 0 ||
+    s.revealIndex > s.playerCount
+  ) {
+    return false;
+  }
+  if (typeof s.voteLocked !== 'boolean') {
+    return false;
+  }
+  if (
+    s.selectedSuspect !== null &&
+    (!Number.isInteger(s.selectedSuspect) ||
+      s.selectedSuspect < 1 ||
+      s.selectedSuspect > s.playerCount)
+  ) {
+    return false;
+  }
+  if (!s.scores || typeof s.scores !== 'object') return false;
+
+  return true;
 }
 
 export function saveActiveGameState(
@@ -116,7 +190,6 @@ export function saveActiveGameState(
       storage.removeItem(KEYS.SCREEN);
       return;
     }
-    // Security & privacy guard: never persist an open SECRET step across reloads
     const sanitizedSession: GameSession = {
       ...session,
       revealStep: 'PROMPT',
@@ -124,7 +197,7 @@ export function saveActiveGameState(
     storage.setItem(KEYS.SESSION, JSON.stringify(sanitizedSession));
     storage.setItem(KEYS.SCREEN, screen);
   } catch {
-    // Ignore quota errors
+    // Storage unavailable or full
   }
 }
 
@@ -137,31 +210,36 @@ export function loadActiveGameState(): {
   try {
     const rawSession = storage.getItem(KEYS.SESSION);
     const rawScreen = storage.getItem(KEYS.SCREEN) as GameScreen | null;
-    if (!rawSession || !rawScreen) return { session: null, screen: null };
-    const session = JSON.parse(rawSession) as GameSession;
-    if (
-      !session ||
-      typeof session.playerCount !== 'number' ||
-      typeof session.imposterPlayer !== 'number' ||
-      !session.wordEntry
-    ) {
+    if (!rawSession) return { session: null, screen: null };
+
+    const parsed = JSON.parse(rawSession);
+    if (!isValidSession(parsed)) {
+      storage.removeItem(KEYS.SESSION);
+      storage.removeItem(KEYS.SCREEN);
       return { session: null, screen: null };
     }
-    // Always restore reveal screen at PROMPT step so nobody peaks on reload
-    session.revealStep = 'PROMPT';
-    const playableScreens: GameScreen[] = [
+
+    parsed.revealStep = 'PROMPT';
+
+    const validScreens: GameScreen[] = [
+      'HOME',
       'REVEAL',
       'DISCUSSION',
       'VOTING',
       'PRE_REVEAL',
-      'TIE_NOTIFICATION',
       'RESULT',
     ];
-    if (!playableScreens.includes(rawScreen)) {
-      return { session: null, screen: null };
+    let safeScreen: GameScreen =
+      rawScreen && validScreens.includes(rawScreen) ? rawScreen : 'HOME';
+
+    if (parsed.voteLocked && safeScreen === 'VOTING') {
+      safeScreen = parsed.outcome ? 'RESULT' : 'PRE_REVEAL';
     }
-    return { session, screen: rawScreen };
+
+    return { session: parsed, screen: safeScreen };
   } catch {
+    storage.removeItem(KEYS.SESSION);
+    storage.removeItem(KEYS.SCREEN);
     return { session: null, screen: null };
   }
 }

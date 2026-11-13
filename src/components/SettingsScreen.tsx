@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Check, RotateCcw, Trash2 } from 'lucide-react';
 import { ALL_CATEGORIES, WORD_LIBRARY } from '../data/words';
-import type {
-  GameSettings,
-  HintDifficulty,
-  WordCategory,
-} from '../types/game';
+import type { GameSettings, WordCategory } from '../types/game';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../utils/gameEngine';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -28,15 +24,6 @@ const TIMER_OPTIONS = [
   { label: '120s', value: 120 },
 ];
 
-const DIFFICULTY_OPTIONS: Array<{
-  value: HintDifficulty;
-  label: string;
-  desc: string;
-}> = [
-  { value: 'easy', label: 'Easy', desc: 'Clear direct clue (Default)' },
-  { value: 'medium', label: 'Medium', desc: 'Subtle descriptive clue' },
-  { value: 'hard', label: 'Hard', desc: 'Indirect single-concept clue' },
-];
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   settings,
@@ -86,7 +73,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const allSelected = settings.selectedCategories.length === 0;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col px-5 py-6 sm:px-8 max-w-4xl mx-auto w-full">
+    <div className="safe-screen flex flex-col max-w-4xl mx-auto w-full">
       <header className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -113,7 +100,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Audio & Gameplay */}
           <section className="rounded-2xl border border-white/10 bg-[#12121A] p-6 space-y-5">
             <h2 className="font-display text-lg font-bold text-white">
@@ -201,7 +188,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     playerCount: Number(e.target.value),
                   })
                 }
-                className="w-full accent-violet-500 h-2 bg-white/10 rounded-lg cursor-pointer"
+                className="w-full zelora-range cursor-pointer"
               />
             </div>
 
@@ -236,41 +223,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </div>
             </div>
 
-            {/* Hint Difficulty */}
+            {/* Imposter Hint System */}
             <div className="pt-4 border-t border-white/8">
-              <div className="text-sm font-semibold text-white mb-2.5">
-                Hint Difficulty
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-white">
+                  Imposter Hint Mode
+                </span>
+                <span className="text-xs font-semibold text-violet-300">
+                  Category Hint
+                </span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {DIFFICULTY_OPTIONS.map((opt) => {
-                  const active = settings.hintDifficulty === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() =>
-                        onUpdateSettings({
-                          ...settings,
-                          hintDifficulty: opt.value,
-                        })
-                      }
-                      className={`min-h-[46px] px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        active
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-[#191924] text-zinc-300 border border-white/8 hover:border-violet-500/40'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-xs text-zinc-400">
-                {
-                  DIFFICULTY_OPTIONS.find(
-                    (d) => d.value === settings.hintDifficulty,
-                  )?.desc
-                }
+              <p className="mt-1.5 text-xs text-zinc-400 leading-relaxed">
+                The imposter sees only the word&apos;s general category (e.g.,
+                Hard Disk → Technology, Lion → Animal).
               </p>
             </div>
           </section>
@@ -286,8 +251,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   <p className="text-xs text-zinc-400 mt-0.5">
                     {WORD_LIBRARY.length} words ·{' '}
                     {allSelected
-                      ? 'All 25 categories enabled'
-                      : `${settings.selectedCategories.length} of 25 selected`}
+                      ? `All ${ALL_CATEGORIES.length} categories enabled`
+                      : `${settings.selectedCategories.length} of ${ALL_CATEGORIES.length} selected`}
                   </p>
                 </div>
                 <button
@@ -305,7 +270,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 </button>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[260px] overflow-y-auto pr-1">
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[260px] overflow-y-auto pr-1 zelora-scroll">
                 {ALL_CATEGORIES.map((category) => {
                   const isSelected =
                     allSelected ||

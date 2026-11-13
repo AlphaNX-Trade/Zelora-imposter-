@@ -10,7 +10,7 @@ interface AboutScreenProps {
 
 export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
   return (
-    <div className="min-h-[100dvh] flex flex-col justify-between px-5 py-6 sm:px-8 max-w-2xl mx-auto w-full">
+    <div className="safe-screen flex flex-col justify-between max-w-2xl mx-auto w-full">
       <header className="flex items-center justify-between gap-4">
         <button
           type="button"

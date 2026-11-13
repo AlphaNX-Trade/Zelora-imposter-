@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Pause, Play, RotateCcw, Vote } from 'lucide-react';
 import { audioEngine } from '../utils/audio';
+import { ExitGameButton } from './ExitGameControl';
 
 interface DiscussionScreenProps {
   roundNumber: number;
   playerCount: number;
   timerDurationSeconds: number;
   onStartVoting: () => void;
+  onRequestExit: () => void;
 }
 
 export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
@@ -14,6 +16,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
   playerCount,
   timerDurationSeconds,
   onStartVoting,
+  onRequestExit,
 }) => {
   const [secondsLeft, setSecondsLeft] = useState(timerDurationSeconds);
   const [isRunning, setIsRunning] = useState(timerDurationSeconds > 0);
@@ -52,12 +55,17 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
   const isLow = timerDurationSeconds > 0 && secondsLeft > 0 && secondsLeft <= 10;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col justify-between px-5 py-6 sm:px-8 max-w-xl mx-auto w-full">
-      <header className="flex items-center justify-between text-xs text-zinc-400">
-        <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
-          Round {String(roundNumber).padStart(2, '0')}
-        </span>
-        <span className="font-mono tabular-nums">{playerCount} Players Ready</span>
+    <div className="safe-screen flex flex-col justify-between max-w-xl mx-auto w-full">
+      <header className="flex items-center justify-between gap-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold uppercase tracking-[0.18em] text-violet-400">
+            Round {String(roundNumber).padStart(2, '0')}
+          </span>
+          <span className="font-mono tabular-nums text-zinc-500">
+            {playerCount} Players
+          </span>
+        </div>
+        <ExitGameButton onClick={onRequestExit} />
       </header>
 
       <main className="my-auto py-6 text-center space-y-6">
